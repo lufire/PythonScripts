@@ -42,6 +42,13 @@ def f_par(x):
     # return np.sum(c)
 
 
+
+@ray.remote
+def f_par(x):
+    f(x)
+    # return np.sum(c)
+
+
 def wait():
     time.sleep(0.001)
     return None
@@ -49,8 +56,9 @@ def wait():
 
 @ray.remote
 def wait_ray():
-    time.sleep(0.001)
+    wait()
     return None
+
 
 tstart = time.time()
 
