@@ -14,11 +14,11 @@ tstart = time.time()
 tstop = time.time()
 dt_init = tstop - tstart
 
-print('ray initialization [s]: {:.3f}'.format(dt_init))
+print('numba initialization [s]: {:.3f}'.format(dt_init))
 
 
 n = 240
-m = 5000
+m = 500
 
 
 def f():
@@ -33,7 +33,7 @@ def f_par(x):
     for i in prange(x):
         a = np.random.rand(m, m)
         b = np.random.rand(m, m)
-        # c = np.matmul(a, b)
+        c = np.matmul(a, b)
 
 
 def wait():

@@ -22,13 +22,13 @@ print('ray initialization [s]: {:.3f}'.format(dt_init))
 
 
 n = 240
-m = 1000
+m = 2000
 
 
 def f(x):
     a = np.random.rand(m, m)
     b = np.random.rand(m, m)
-    c = np.matmul(a, b)
+    # c = np.matmul(a, b)
     # return np.sum(c)
 
 
