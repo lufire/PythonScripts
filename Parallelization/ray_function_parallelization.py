@@ -21,30 +21,33 @@ dt_init = tstop - tstart
 print('ray initialization [s]: {:.3f}'.format(dt_init))
 
 
-n = 200
+n = 240
 m = 1000
+
+
+def f(x):
+    a = np.random.rand(m, m)
+    b = np.random.rand(m, m)
+    c = np.matmul(a, b)
+    return np.sum(c)
+
 
 @ray.remote
 def f_par(x):
-    a = np.random.rand(m, m)
-    b = np.random.rand(m, m)
-    c = np.matmul(a, b)
-    return np.sum(c)
+    f(x)
+    # return np.sum(c)
 
-def f_ser(x):
-    a = np.random.rand(m, m)
-    b = np.random.rand(m, m)
-    c = np.matmul(a, b)
-    return np.sum(c)
 
 def wait():
     time.sleep(0.001)
     return None
 
+
 @ray.remote
 def wait_ray():
-    time.sleep(0.001)
+    wait()
     return None
+
 
 tstart = time.time()
 
@@ -57,7 +60,7 @@ print('ray parallelization [s]: {:.3f}'.format(dt_par))
 
 tstart = time.time()
 
-results = [f_ser(i) for i in range(n)]
+results = [f(i) for i in range(n)]
 # print(results) # [0, 1, 4, 9]
 
 tstop = time.time()
