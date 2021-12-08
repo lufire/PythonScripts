@@ -16,7 +16,7 @@ m = 1000
 def f(x):
     a = np.random.rand(m, m)
     b = np.random.rand(m, m)
-    c = np.matmul(a, b)
+    # # c = np.matmul(a, b)
     # return np.sum(c)
 
 
