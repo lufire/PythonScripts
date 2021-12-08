@@ -11,7 +11,7 @@ import time
 
 tstart = time.time()
 
-ray.shutdown()
+# ray.shutdown()
 if not ray.is_initialized():
     ray.init()
 
@@ -21,25 +21,31 @@ dt_init = tstop - tstart
 print('ray initialization [s]: {:.3f}'.format(dt_init))
 
 
-n = 200
+n = 240
 m = 1000
+
+
+def f(x):
+    a = np.random.rand(m, m)
+    b = np.random.rand(m, m)
+    c = np.matmul(a, b)
+    # return np.sum(c)
+
 
 @ray.remote
 def f_par(x):
-    a = np.random.rand(m, m)
-    b = np.random.rand(m, m)
-    c = np.matmul(a, b)
-    return np.sum(c)
+    f(x)
 
-def f_ser(x):
-    a = np.random.rand(m, m)
-    b = np.random.rand(m, m)
-    c = np.matmul(a, b)
-    return np.sum(c)
+    # a = np.random.rand(m, m)
+    # b = np.random.rand(m, m)
+    # c = np.matmul(a, b)
+    # return np.sum(c)
+
 
 def wait():
     time.sleep(0.001)
     return None
+
 
 @ray.remote
 def wait_ray():
@@ -57,13 +63,13 @@ print('ray parallelization [s]: {:.3f}'.format(dt_par))
 
 tstart = time.time()
 
-results = [f_ser(i) for i in range(n)]
+results = [f(i) for i in range(n)]
 # print(results) # [0, 1, 4, 9]
 
 tstop = time.time()
 dt = tstop - tstart
 dt_ser = tstop - tstart
 print('serial [s]: {:.3f}'.format(dt_ser))
-print('speedup [-]: {:.3f}'.format(dt_ser/dt_par))
+print('ray speedup [-]: {:.3f}'.format(dt_ser/dt_par))
 
-#ray.shutdown()
+# ray.shutdown()
