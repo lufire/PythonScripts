@@ -16,7 +16,7 @@ import saturation as sat
 
 # boundary conditions
 current_density = np.linspace(100.0, 30000.0, 100)
-# current_density = [10000.0]
+current_density = [1000.0]
 temp = 343.15
 
 # parameters
@@ -31,13 +31,18 @@ thickness = 260e-6
 porosity = 0.74
 permeability_abs = 1.88e-11
 
+# comparison SGG
+thickness = 200e-6
+porosity = 0.5
+permeability_abs = 6.2e-12
+
 # mixed wettability model parameters
 r_k = np.asarray([[14.20e-6, 34.00e-6], [14.20e-6, 34.00e-6]])
 F_HI = 0.0
 F = np.asarray([F_HI, 1.0 - F_HI])
 f_k = np.asarray([[0.28, 0.72], [1.0, 0.0]])
 s_k = np.asarray([[1.0, 0.35], [1.0, 0.35]])
-contact_angle = np.asarray([70.0, 120.0])
+contact_angle = np.asarray([80.0, 120.0])
 
 # numerical discretization
 nz = 5
@@ -45,7 +50,7 @@ z = np.linspace(0, thickness, nz)
 dz = thickness / nz
 
 # saturation bc
-s_chl = 0.01
+s_chl = 0.001
 
 # initial saturation
 s_0 = np.ones(z.shape) * s_chl
@@ -55,8 +60,7 @@ p_chl = 101325.0
 
 # relative permeability
 def k_s(s):
-    return s ** 3.0
-
+    return s # ** 3.0
 
 source = np.zeros(z.shape)
 
@@ -69,11 +73,12 @@ for j in range(len(current_density)):
     
     water_flux = current_density[j] / (2.0 * faraday) * mm_water
     s = np.copy(s_0)
-    iter_max = 50
+    iter_max = 501
+    iter_min = 3
     eps = np.inf
     error_tol = 1e-5
     i = 0
-    while i < iter_max and eps > error_tol:
+    while i < iter_min or (i < iter_max and eps > error_tol):
         k = np.zeros(s.shape)
         k[:] = k_const * k_s(s)
         k_f = (k[:-1] + k[1:]) * 0.5
@@ -108,10 +113,10 @@ for j in range(len(current_density)):
         p_c = p_liquid - p_gas
     
         s_old = np.copy(s)
-        # s = sat.get_saturation_psd(p_c, sigma_water, contact_angle, 
+        # s = sat.get_saturation_psd(p_c, sigma_water, contact_angle,
         #                             F, f_k, r_k, s_k)
         s = \
-            sat.get_saturation_leverett(p_c, sigma_water, contact_angle[1], 
+            sat.get_saturation_leverett(p_c, sigma_water, contact_angle[1],
                                         porosity, permeability_abs)
         s_diff = s - s_old
         p_diff = p_c - p_c_old
@@ -121,12 +126,13 @@ for j in range(len(current_density)):
         eps = eps_s + eps_p
         # p_c_2 = sat.leverett_p_s(s, sigma_water, contact_angle[1], 
         #                         porosity, permeability_abs)      
-        # print(i)
-        # print(p_c)
-        # print(s)
+        print(i)
+        print(p_c)
+        print(s)
         i += 1
-    if i >= iter_max:
-        s *= 0.0
+        print(eps)
+    # if i >= iter_max:
+    #     s *= 0.0
         
     capillary_pressure_avg.append(np.average(p_c))
     saturation_avg.append(np.average(s))
@@ -136,9 +142,10 @@ capillary_pressure_avg = np.asarray(capillary_pressure_avg)
 saturation_avg = np.asarray(saturation_avg)
 
 
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(dpi=100)
 
-ax.plot(current_density, saturation_avg)
+# ax.plot(current_density, saturation_avg)
+ax.plot(z*1e6, s)
 
 # plt.plot(z, s_1)
 plt.show()
