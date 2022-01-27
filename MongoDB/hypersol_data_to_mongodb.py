@@ -25,7 +25,7 @@ def get_file_paths(directory, file_extension, filter_string=''):
     for dirpath,_,filenames in os.walk(directory):
         for name in filenames:
             if os.path.splitext(name)[1][1:] == file_extension:
-                if filter_string and filter_string in name:
+                if filter_string in name:
                     yield os.path.abspath(os.path.join(dirpath, name))
                       
 file_paths = list(get_file_paths(base_dir, 'dat', 'HyperSol'))
