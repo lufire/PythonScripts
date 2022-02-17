@@ -15,28 +15,34 @@ from matplotlib import pyplot as plt
 def leverett_hi(s):
     return 1.417 * (1.0 - s) - 2.120 * (1.0 - s) ** 2 \
         + 1.263 * (1.0 - s) ** 3
-    
+
+
 def leverett_ho(s):
     return 1.417 * s - 2.120 * s ** 2 + 1.263 * s ** 3
+
 
 def leverett_j(s, theta):
     if theta < 90.0:
         return leverett_hi(s)
     else:
         return leverett_ho(s)
-    
+
+
 def leverett_p_s(saturation, surface_tension, contact_angle, 
                  porosity, permeability):
     factor = - surface_tension * np.cos(contact_angle * np.pi / 180.0) \
         * np.sqrt(porosity / permeability)
     return factor * leverett_j(saturation, contact_angle)
 
+
 def leverett_s_p(capillary_pressure, surface_tension, contact_angle, 
                  porosity, permeability):
     factor = - surface_tension * np.cos(contact_angle * np.pi / 180.0) \
         * np.sqrt(porosity / permeability)
+
     def root_leverett_p_s(saturation):
-        return factor * leverett_j(saturation, contact_angle) - capillary_pressure
+        return factor * leverett_j(saturation, contact_angle) \
+               - capillary_pressure
     s_in = np.zeros(np.asarray(capillary_pressure).shape) + 1e-3
     saturation = optimize.root(root_leverett_p_s, s_in).x
     return saturation
@@ -53,6 +59,7 @@ def get_critical_radius(p_c, sigma, theta):
         np.where(p_c < 0.0, np.inf, young_laplace(p_c, sigma, theta[1]))
     return np.asarray([r_c_HI, r_c_HO])
 
+
 def get_saturation_leverett(capillary_pressure, surface_tension, contact_angle, 
                             porosity, permeability):
     saturation = \
@@ -61,6 +68,7 @@ def get_saturation_leverett(capillary_pressure, surface_tension, contact_angle,
     # return saturation
     return np.where(saturation < 0.0, 0.0, 
                     np.where(saturation > 1.0, 1.0, saturation))
+
 
 def get_saturation_psd(capillary_pressure, surface_tension, contact_angles, 
                        F, f, r, s):
@@ -73,9 +81,10 @@ def get_saturation_psd(capillary_pressure, surface_tension, contact_angles,
         for j in range(f.shape[1]):
             saturation += F[i] * f[i, j] * 0.5 \
                 * (1.0 + phi[i] * special.erf((np.log(r_c[i]) 
-                                               - np.log(r[i, j])) \
-                   / (s[i, j] * sqrt_2)))
+                                               - np.log(r[i, j]))
+                                              / (s[i, j] * sqrt_2)))
     return saturation
+
 
 if __name__ == "__main__":
     # parameters
@@ -119,7 +128,7 @@ if __name__ == "__main__":
             
     p_c = np.linspace(-1000, 1000, 100)
     r_c = get_critical_radius(p_c, sigma_water, contact_angle)
-    s = get_saturation(r_c, F, f_k, r_k, s_k)
+    s = get_saturation_psd(r_c, F, f_k, r_k, s_k)
     
     theta = contact_angle[1]
     
@@ -127,7 +136,7 @@ if __name__ == "__main__":
                        porosity, permeability_abs)
     s_3 = np.linspace(0.0, 1.0, 100)
     p_c_3 = leverett_p_s(s_3, sigma_water, theta, 
-                       porosity, permeability_abs)
+                         porosity, permeability_abs)
 
     #  plt.plot(p_c, s)
     plt.plot(p_c, s_2)

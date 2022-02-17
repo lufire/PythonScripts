@@ -38,11 +38,11 @@ print(file_paths)
 
 
 # initialize mongo connector object with ip adress
-client = MongoClient('zbts07')
+client = MongoClient('xxx')
 # get reference to existing database testDB
 db = client.HyperSol
 # authentication within database
-db.authenticate('lfd', 'qwertz', source='admin')
+db.authenticate('xxx', 'xxx', source='xxx')
 # reference collection, if not existent it will be created
 current_collection = db['Raw']
 
@@ -62,7 +62,7 @@ file_paths_new = []
 for path in file_paths:
     file_name = os.path.splitext(os.path.basename(path))[0]
     # print(file_name)
-    if not current_collection.count_documents({'Name': file_name}, limit = 1):
+    if not current_collection.count_documents({'Name': file_name}, limit=1):
         file_paths_new.append(path)
 for file in file_paths_new:
     print(os.path.basename(file))
