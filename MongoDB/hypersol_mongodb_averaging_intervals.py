@@ -27,11 +27,11 @@ import plotly.graph_objects as go
 
 
 # initialize mongo connector object with ip adress
-client = MongoClient('zbts07')
+client = MongoClient('xxx')
 # get reference to existing database testDB
 db = client.HyperSol
 # authentication within database
-db.authenticate('lfd', 'qwertz', source='admin')
+db.authenticate('xxx', 'xxx', source='admin')
 
 
 # In[4]:
