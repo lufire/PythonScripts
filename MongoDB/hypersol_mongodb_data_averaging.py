@@ -128,5 +128,5 @@ for db_entry in db_entries:
     # reference collection, if not existent it will be created
     current_collection = db['HyperSol_61904_Average_SmartGas']
     # insert loaded entry into database collection
-    current_collection.insert_one(db_entry)
+    # current_collection.insert_one(db_entry)
 
