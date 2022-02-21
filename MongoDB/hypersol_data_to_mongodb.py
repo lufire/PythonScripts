@@ -17,22 +17,20 @@ from datetime import datetime
 # specificy directory with files to be loaded into database
 base_dir = \
     r'W:\Projekte\NRW_HyperSol_61904\Bearbeitung\Massenspektroskopie\Messdaten'
-contain_strings = ['HyperSol']
-exclude_strings = ['SmartGas', 'Smartgas']
+contain_string = 'HyperSol'
+exclude_string = 'SmartGas'
 
 
-def get_file_paths(directory, file_extension, contains=[], excludes=[]):
+def get_file_paths(directory, file_extension, filter_string=''):
     for dirpath, _, filenames in os.walk(directory):
         for name in filenames:
             if os.path.splitext(name)[1][1:] == file_extension:
-                if all(item in name for item in contains):
-                    if all(item not in name for item in excludes):
-                        yield os.path.abspath(os.path.join(dirpath, name))
+                if filter_string in name:
+                    yield os.path.abspath(os.path.join(dirpath, name))
 
 
-file_paths = list(get_file_paths(base_dir, 'dat', contains=contain_strings, 
-                                 excludes=exclude_strings))
-# file_paths = [path for path in file_paths if exclude_string not in path]
+file_paths = list(get_file_paths(base_dir, 'dat', 'HyperSol'))
+file_paths = [path for path in file_paths if exclude_string not in path]
 print(file_paths)
 
 
@@ -44,7 +42,7 @@ client = MongoClient('xxx')
 # get reference to existing database testDB
 db = client.HyperSol
 # authentication within database
-db.authenticate('xxx', 'xxx', source='admin')
+db.authenticate('xxx', 'xxx', source='xxx')
 # reference collection, if not existent it will be created
 current_collection = db['Raw']
 
@@ -64,7 +62,7 @@ file_paths_new = []
 for path in file_paths:
     file_name = os.path.splitext(os.path.basename(path))[0]
     # print(file_name)
-    if not current_collection.count_documents({'Name': file_name}, limit = 1):
+    if not current_collection.count_documents({'Name': file_name}, limit=1):
         file_paths_new.append(path)
 for file in file_paths_new:
     print(os.path.basename(file))

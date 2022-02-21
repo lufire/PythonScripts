@@ -15,11 +15,11 @@ from datetime import datetime, timedelta
 
 
 # initialize mongo connector object with ip adress
-client = MongoClient('zbts07')
+client = MongoClient('xxx')
 # get reference to existing database testDB
 db = client.testDB
 # authentication within database
-db.authenticate('lfd', 'qwertz', source='admin')
+db.authenticate('xxx', 'xxx', source='xxx')
 
 # path to mass spectrum calibration data
 ms_calibration_data_file = r'W:\Projekte\NRW_HyperSol_61904\Bearbeitung'\
@@ -56,6 +56,7 @@ db_entries = current_collection.find({'Catalyst Sample':
                                       {'$regex': sample_name_re}})
 db_entries = list(db_entries)
 
+
 # filter species dict by list of names or list of amus
 def filter_species(name_list=None, amu_list=None):
     filtered_amu_species_dict = amu_species_dict
@@ -72,6 +73,7 @@ def filter_species(name_list=None, amu_list=None):
 
 # species_list = ['H2', 'CH4', 'H2O', 'O2', 'N2', 'CO2', 'Ar', 'H2O']
 # amu_list = [1, 2, 15, 16, 28, 40, 44]
+
 
 filtered_amu_species_dict = filter_species() #, amu_list=amu_list)
 filtered_amu_list = np.array(list(filtered_amu_species_dict.keys()))
