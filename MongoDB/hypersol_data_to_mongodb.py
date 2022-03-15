@@ -29,7 +29,8 @@ def get_file_paths(directory, file_extension, filter_string=''):
                     yield os.path.abspath(os.path.join(dirpath, name))
 
 
-file_paths = list(get_file_paths(base_dir, 'dat', 'HyperSol'))
+file_paths = list(get_file_paths(base_dir, 'dat', 
+                                 filter_string=contain_string))
 file_paths = [path for path in file_paths if exclude_string not in path]
 print(file_paths)
 
@@ -38,11 +39,11 @@ print(file_paths)
 
 
 # initialize mongo connector object with ip adress
-client = MongoClient('xxx')
+client = MongoClient('zbts07')
 # get reference to existing database testDB
 db = client.HyperSol
 # authentication within database
-db.authenticate('xxx', 'xxx', source='xxx')
+db.authenticate('lfd', 'qwertz', source='admin')
 # reference collection, if not existent it will be created
 current_collection = db['Raw']
 
@@ -171,9 +172,14 @@ for data_path in file_paths_new:
         liquid_flow = float(get_between(data_name, 'gph')[0].replace('p', '.'))
     except ValueError:
         liquid_flow = get_between(data_name, 'gph')[0].replace('p', '.')
+    except IndexError:
+        liquid_flow = 0.0
     temperature = float(get_between(data_name, 'C_')[0].replace('p', '.'))
-    lamp = get_between(data_name, 'W-')[0] + 'W-' \
-        + get_between(data_name, 'W-', after=True)[0]
+    try:
+        lamp = get_between(data_name, 'W-')[0] + 'W-' \
+            + get_between(data_name, 'W-', after=True)[0]
+    except IndexError:
+        lamp = 'None'
     
     # In[341]:
     
@@ -206,6 +212,7 @@ for data_path in file_paths_new:
         
                      # 'Radiation Source': 'HMI 150W',
     db_entry_dict['Annotations'] = annotations
+    print(db_entry_dict)
     db_entry_dict['Data'] = data_dict_filtered
     # add general info to database entry
     db_entry_dict.update(general_info_dict)

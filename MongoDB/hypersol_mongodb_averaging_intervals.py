@@ -27,20 +27,21 @@ import plotly.graph_objects as go
 
 
 # initialize mongo connector object with ip adress
-client = MongoClient('xxx')
+client = MongoClient('zbts07')
 # get reference to existing database testDB
 db = client.HyperSol
 # authentication within database
-db.authenticate('xxx', 'xxx', source='admin')
+db.authenticate('lfd', 'qwertz', source='admin')
 
 
 # In[4]:
-
+# directories
 
 # path to mass spectrum calibration data
 ms_calibration_data_file = r'W:\Projekte\NRW_HyperSol_61904\Bearbeitung\Massenspektroskopie\Spektren\mass_spectrums.json'
 
-
+# path to save plots
+plot_path = r'W:\Projekte\NRW_HyperSol_61904\Bearbeitung\Ergebnisse\Averaged_Results'
 # In[ ]:
 
 
@@ -86,7 +87,7 @@ for db_entry in raw_db_entries:
     if count_docs == 0:
         counter += 1
         # make local directory to save data
-        directory = os.path.join(r'W:\Projekte\NRW_HyperSol_61904\Bearbeitung\Ergebnisse', db_entry['Name'])
+        directory = os.path.join(plot_path, db_entry['Name'])
         if not os.path.exists(directory):
             os.mkdir(directory)
         
@@ -95,8 +96,12 @@ for db_entry in raw_db_entries:
         
         
         # get database entry general information
-        general_info_keys = ['Catalyst Sample', 'Experiment Type', 'Gas Molar Composition (-)', 'Gas Flow Rate (sccm)', 
-                             'Liquid Molar Composition (-)', 'Liquid Flow Rate (g/h)', 'Radiation Source', 'Temperature (C)']
+        general_info_keys = ['Catalyst Sample', 'Experiment Type', 
+                             'Gas Molar Composition (-)', 
+                             'Gas Flow Rate (sccm)', 
+                             'Liquid Molar Composition (-)', 
+                             'Liquid Flow Rate (g/h)', 'Radiation Source', 
+                             'Temperature (C)']
         
         
         # In[149]:
