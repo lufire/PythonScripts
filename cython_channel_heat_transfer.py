@@ -12,8 +12,8 @@ import sys
 sys.path.append(r"D:\ZBT\Python\cython\compiled")
 
 import channel_heat_transfer as cht
-
 import channel_heat_transfer
+
 
 def calc_temp_heat_transfer(wall_temp, fluid_temp, capacity_rate, heat_coeff,
                             flow_direction):
