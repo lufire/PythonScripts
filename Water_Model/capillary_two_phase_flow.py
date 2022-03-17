@@ -56,7 +56,7 @@ contact_angle = np.asarray([80.0, 120.0])
 thickness = 200e-6
 porosity = 0.5
 permeability_abs = 6.2e-12
-contact_angle = 80.0
+contact_angle = np.asarray([80.0, 80.0])
 
 # capillary pressure - saturation correlation model
 saturation_model = 'leverett'
@@ -139,17 +139,15 @@ for j in range(len(current_density)):
                                        f_k, r_k, s_k)
         elif saturation_model == 'leverett':
             s = sat.get_saturation_leverett(p_c, sigma_water, 
-                                            contact_angle, porosity, 
+                                            contact_angle[1], porosity,
                                             permeability_abs)
         else:
             raise NotImplementedError()
-=======
         # s = sat.get_saturation_psd(p_c, sigma_water, contact_angle,
         #                             F, f_k, r_k, s_k)
-        s = \
-            sat.get_saturation_leverett(p_c, sigma_water, contact_angle[1],
-                                        porosity, permeability_abs)
->>>>>>> 6b3c29ebe3cdc24944f58345b1dea24cb5ca9772
+        # s = \
+        #     sat.get_saturation_leverett(p_c, sigma_water, contact_angle[1],
+        #                                 porosity, permeability_abs)
         s_diff = s - s_old
         p_diff = p_c - p_c_old
         eps_s = np.dot(s_diff.transpose(), s_diff) / (2.0 * len(s_diff))
