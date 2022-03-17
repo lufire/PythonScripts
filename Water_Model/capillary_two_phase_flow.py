@@ -16,11 +16,7 @@ import saturation as sat
 
 # boundary conditions
 current_density = np.linspace(100.0, 30000.0, 100)
-<<<<<<< HEAD
 current_density = [10000.0]
-=======
-current_density = [1000.0]
->>>>>>> 6b3c29ebe3cdc24944f58345b1dea24cb5ca9772
 temp = 343.15
 
 # parameters
@@ -35,14 +31,11 @@ thickness = 260e-6
 porosity = 0.74
 permeability_abs = 1.88e-11
 
-<<<<<<< HEAD
 
-=======
 # comparison SGG
 thickness = 200e-6
 porosity = 0.5
 permeability_abs = 6.2e-12
->>>>>>> 6b3c29ebe3cdc24944f58345b1dea24cb5ca9772
 
 # mixed wettability model parameters
 r_k = np.asarray([[14.20e-6, 34.00e-6], [14.20e-6, 34.00e-6]])
@@ -114,8 +107,8 @@ for j in range(len(current_density)):
         off_diag = k_f
            
         # construct tridiagonal matrix        
-        A_matrix = (np.diag(center_diag, k=0) + np.diag(off_diag, k=-1) \
-            + np.diag(off_diag, k=1)) / dz ** 2.0
+        A_matrix = (np.diag(center_diag, k=0) + np.diag(off_diag, k=-1)
+                    + np.diag(off_diag, k=1)) / dz ** 2.0
             
         # setup right hand side
         rhs = np.zeros(nz)
@@ -131,9 +124,7 @@ for j in range(len(current_density)):
         p_c = p_liquid - p_gas
     
         s_old = np.copy(s)
-<<<<<<< HEAD
 
-    
         if saturation_model == 'psd':
             s = sat.get_saturation_psd(p_c, sigma_water, contact_angle, F, 
                                        f_k, r_k, s_k)
@@ -160,10 +151,8 @@ for j in range(len(current_density)):
         print(p_c)
         print(s)
         i += 1
-<<<<<<< HEAD
-=======
+
         print(eps)
->>>>>>> 6b3c29ebe3cdc24944f58345b1dea24cb5ca9772
     # if i >= iter_max:
     #     s *= 0.0
         
@@ -178,10 +167,8 @@ saturation_avg = np.asarray(saturation_avg)
 fig, ax = plt.subplots(dpi=100)
 
 # ax.plot(current_density, saturation_avg)
-<<<<<<< HEAD
-=======
+
 ax.plot(z*1e6, s)
->>>>>>> 6b3c29ebe3cdc24944f58345b1dea24cb5ca9772
 
 ax.plot(z * 1e6, s)
 plt.show()

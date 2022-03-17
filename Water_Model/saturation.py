@@ -64,12 +64,8 @@ def get_saturation_leverett(capillary_pressure, surface_tension, contact_angle,
     saturation = \
         leverett_s_p(capillary_pressure, surface_tension, contact_angle, 
                      porosity, permeability)
-<<<<<<< HEAD
-    return np.where(saturation < 0.0, 1e-3, 
-=======
-    # return saturation
-    return np.where(saturation < 0.0, 0.0, 
->>>>>>> 6b3c29ebe3cdc24944f58345b1dea24cb5ca9772
+    # return np.where(saturation < 0.0, 1e-3, saturation)
+    return np.where(saturation < 0.0, 1e-5,
                     np.where(saturation > 1.0, 1.0, saturation))
 
 
