@@ -43,25 +43,27 @@ F = np.asarray([F_HI, 1.0 - F_HI])
 f_k = np.asarray([[0.28, 0.72], [1.0, 0.0]])
 s_k = np.asarray([[1.0, 0.35], [1.0, 0.35]])
 contact_angle = np.asarray([80.0, 95.0])
-contact_angle = np.asarray([80.0, 120.0])
 
 # parameters SGG comparison
 thickness = 200e-6
 porosity = 0.5
 permeability_abs = 6.2e-12
-contact_angle = np.asarray([80.0, 80.0])
+contact_angle = np.asarray([80.0, 120.0])
 
-# capillary pressure - saturation correlation model
+# capillary pressure - saturation correlation model ('leverett', 'psd')
 saturation_model = 'leverett'
-# saturation_model = 'psd'
+
+# parameter lists
+params_psd = [sigma_water, contact_angle, F, f_k, r_k, s_k]
+params_leverett = [sigma_water, contact_angle[1], porosity]
 
 # numerical discretization
-nz = 200
+nz = 5
 z = np.linspace(0, thickness, nz)
 dz = thickness / nz
 
 # saturation bc
-s_chl = 0.05
+s_chl = 0.3
 
 # initial saturation
 s_0 = np.ones(z.shape) * s_chl
@@ -70,6 +72,7 @@ s_0 = np.ones(z.shape) * s_chl
 p_chl = 101325.0
 
 urf = 0.5
+
 
 # relative permeability
 def k_s(saturation):
@@ -131,9 +134,10 @@ for j in range(len(current_density)):
         # s_new = \
         #     sat.get_saturation_psd(p_c, sigma_water, contact_angle,
         #                            F, f_k, r_k, s_k)
+        params_leverett.append(k)
         s_new = \
-            sat.get_saturation_leverett(p_c, sigma_water, contact_angle[1],
-                                        porosity, permeability_abs)
+            sat.get_saturation(p_c, params_psd, params_leverett,
+                               saturation_model)
         s = urf * s_new + (1.0 - urf) * s_old
         s_diff = s - s_old
         p_diff = p_c - p_c_old

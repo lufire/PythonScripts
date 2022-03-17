@@ -11,6 +11,9 @@ from scipy import special
 from scipy import optimize
 from matplotlib import pyplot as plt
 
+SQRT_2 = math.sqrt(2.0)
+SQRT_2PI = math.sqrt(2.0 * math.pi)
+
 
 def leverett_hi(s):
     return 1.417 * (1.0 - s) - 2.120 * (1.0 - s) ** 2 \
@@ -48,52 +51,72 @@ def leverett_s_p(capillary_pressure, surface_tension, contact_angle,
     return saturation
 
 
-def young_laplace(p_c, sigma, theta):
-    return - 1.0 * 2.0 * sigma * np.cos(theta * np.pi / 180.0) / p_c
+def young_laplace(capillary_pressure, sigma, contact_angle):
+    return - 1.0 * 2.0 * sigma * np.cos(contact_angle * np.pi / 180.0) \
+           / capillary_pressure
 
 
-def get_critical_radius(p_c, sigma, theta):
-    r_c_HI = \
-        np.where(p_c < 0.0, young_laplace(p_c, sigma, theta[0]), np.inf)
-    r_c_HO = \
-        np.where(p_c < 0.0, np.inf, young_laplace(p_c, sigma, theta[1]))
-    return np.asarray([r_c_HI, r_c_HO])
+def get_critical_radius(capillary_pressure, sigma, contact_angle):
+    critical_radius_hydrophilic = \
+        np.where(capillary_pressure < 0.0,
+                 young_laplace(capillary_pressure, sigma, contact_angle[0]),
+                 np.inf)
+    critical_radius_hydrophobic = \
+        np.where(capillary_pressure < 0.0, np.inf,
+                 young_laplace(capillary_pressure, sigma, contact_angle[1]))
+    return np.asarray([critical_radius_hydrophilic,
+                       critical_radius_hydrophobic])
 
 
-def get_saturation_leverett(capillary_pressure, surface_tension, contact_angle,
-                            porosity, permeability):
+def get_saturation_leverett(capillary_pressure, params):
+    try:
+        surface_tension = params[0]
+        contact_angle = params[1]
+        porosity = params[2]
+        permeability = params[3]
+    except IndexError:
+        raise IndexError('params input list not complete, must include: '
+                         'surface_tension:float, contact_angle:float, '
+                         'porosity:float, permeability:float')
     saturation = \
         leverett_s_p(capillary_pressure, surface_tension, contact_angle, 
                      porosity, permeability)
     # return saturation
-    return np.where(saturation < 0.0, 1e-5,
+    return np.where(saturation < 0.0, 0.0,
                     np.where(saturation > 1.0, 1.0, saturation))
 
 
-def get_saturation_psd(capillary_pressure, surface_tension, contact_angles,
-                       F, f, r, s):
-    r_c = get_critical_radius(capillary_pressure, surface_tension, 
-                              contact_angles)
-    saturation = np.zeros(r_c.shape[-1])
+def get_saturation_psd(capillary_pressure, params):
+    try:
+        surface_tension = params[0]
+        contact_angles = params[1]
+        F = params[2]
+        f = params[3]
+        r = params[4]
+        s = params[5]
+    except IndexError:
+        raise IndexError('params input list not complete, must include: '
+                         'surface_tension:float, contact_angle:list, F:list,'
+                         'f:list, r:list, s:list')
+
+    critical_radius = get_critical_radius(capillary_pressure, surface_tension,
+                                          contact_angles)
+    saturation = np.zeros(critical_radius.shape[-1])
     phi = [1, -1]
-    sqrt_2 = math.sqrt(2.0)
     for i in range(f.shape[0]):
         for j in range(f.shape[1]):
             saturation += F[i] * f[i, j] * 0.5 \
-                * (1.0 + phi[i] * special.erf((np.log(r_c[i]) 
+                * (1.0 + phi[i] * special.erf((np.log(critical_radius[i])
                                                - np.log(r[i, j]))
-                   / (s[i, j] * sqrt_2)))
+                   / (s[i, j] * SQRT_2)))
     return saturation
 
 
-def get_saturation(capillary_pressure, surface_tension, contact_angles,
-                   F, f, r, s, model):
-    if model == 'psd':
-        return get_saturation_psd(capillary_pressure, surface_tension, 
-                                  contact_angles, F, f, r, s)
-    elif model == 'leverett':
-        return get_saturation_leverett(capillary_pressure, surface_tension, 
-                                       contact_angles, F, f, r, s)
+def get_saturation(capillary_pressure, params_psd, params_leverett, model_type):
+    if model_type == 'psd':
+        return get_saturation_psd(capillary_pressure, params_psd)
+    elif model_type == 'leverett':
+        return get_saturation_leverett(capillary_pressure, params_leverett)
     else:
         raise NotImplementedError()
 
@@ -133,22 +156,19 @@ if __name__ == "__main__":
     F = np.asarray([F_HI, 1.0 - F_HI])
     f_k = np.asarray([[0.28, 0.72], [0.28, 0.72]])
     s_k = np.asarray([[1.0, 0.35], [1.0, 0.35]])
-    contact_angle = np.asarray([70.0, 122.0])
-    
-    sqrt_2 = math.sqrt(2.0)
-    sqrt_2pi = math.sqrt(2.0 * math.pi)
-            
+    thetas = np.asarray([70.0, 122.0])
+
     p_c = np.linspace(-1000, 1000, 100)
-    r_c = get_critical_radius(p_c, sigma_water, contact_angle)
-    s = get_saturation(r_c, F, f_k, r_k, s_k)
+    r_c = get_critical_radius(p_c, sigma_water, thetas)
+    # s = get_saturation(r_c, F, f_k, r_k, s_k)
     
-    theta = contact_angle[1]
+    theta = thetas[1]
     
     s_2 = leverett_s_p(p_c, sigma_water, theta, 
                        porosity, permeability_abs)
     s_3 = np.linspace(0.0, 1.0, 100)
     p_c_3 = leverett_p_s(s_3, sigma_water, theta, 
-                       porosity, permeability_abs)
+                         porosity, permeability_abs)
 
     #  plt.plot(p_c, s)
     plt.plot(p_c, s_2)
