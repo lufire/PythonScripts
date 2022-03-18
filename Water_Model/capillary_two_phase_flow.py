@@ -8,6 +8,8 @@ Created on Wed Aug 11 12:41:36 2021
 import math
 import numpy as np
 from scipy import optimize
+from scipy import sparse
+from scipy.sparse.linalg import spsolve
 # import sympy as sy
 from matplotlib import pyplot as plt
 import saturation as sat
@@ -38,32 +40,32 @@ permeability_abs = 6.2e-12
 
 # mixed wettability model parameters
 r_k = np.asarray([[14.20e-6, 34.00e-6], [14.20e-6, 34.00e-6]])
-F_HI = 0.0
+F_HI = 0.08
 F = np.asarray([F_HI, 1.0 - F_HI])
-f_k = np.asarray([[0.28, 0.72], [1.0, 0.0]])
+f_k = np.asarray([[0.28, 0.72], [0.28, 0.72]])
 s_k = np.asarray([[1.0, 0.35], [1.0, 0.35]])
-contact_angle = np.asarray([80.0, 95.0])
+contact_angles = np.asarray([80.0, 100.0])
 
 # parameters SGG comparison
 thickness = 200e-6
 porosity = 0.5
 permeability_abs = 6.2e-12
-contact_angle = np.asarray([80.0, 120.0])
-
+contact_angles = np.asarray([80.0, 100.0])
+contact_angle = contact_angles[1]
 # capillary pressure - saturation correlation model ('leverett', 'psd')
 saturation_model = 'leverett'
 
 # parameter lists
-params_psd = [sigma_water, contact_angle, F, f_k, r_k, s_k]
-params_leverett = [sigma_water, contact_angle[1], porosity]
+params_psd = [sigma_water, contact_angles, F, f_k, r_k, s_k]
+params_leverett = [sigma_water, contact_angle, porosity]
 
 # numerical discretization
-nz = 5
+nz = 100
 z = np.linspace(0, thickness, nz)
 dz = thickness / nz
 
 # saturation bc
-s_chl = 0.3
+s_chl = 1e-3
 
 # initial saturation
 s_0 = np.ones(z.shape) * s_chl
@@ -93,7 +95,7 @@ for j in range(len(current_density)):
     iter_max = 100
     iter_min = 3
     eps = np.inf
-    error_tol = 1e-5
+    error_tol = 1e-6
     i = 0
     while i < iter_min or (i < iter_max and eps > error_tol):
         k = np.zeros(s.shape)
@@ -112,19 +114,27 @@ for j in range(len(current_density)):
         # setup offset diagonals
         off_diag = k_f
            
-        # construct tridiagonal matrix        
+        # construct tridiagonal matrix
         A_matrix = (np.diag(center_diag, k=0) + np.diag(off_diag, k=-1)
                     + np.diag(off_diag, k=1)) / dz ** 2.0
+
+        if nz > 200:
+            A_matrix = sparse.csr_matrix(A_matrix)
             
         # setup right hand side
+        p_gas = p_chl
+        p_liquid_chl = sat.leverett_p_s(s_chl, sigma_water, contact_angle,
+                                        porosity, k_chl) + p_gas
         rhs = np.zeros(nz)
         rhs[:] = - source
         rhs[0] += - water_flux / dz
-        rhs[-1] += - 2 * k_chl / dz ** 2.0 * p_chl
+        rhs[-1] += - 2 * k_chl / dz ** 2.0 * p_liquid_chl
+
+        if nz > 200:
+            p_liquid = spsolve(A_matrix, rhs)
+        else:
+            p_liquid = np.linalg.tensorsolve(A_matrix, rhs)
         
-        p_liquid = np.linalg.tensorsolve(A_matrix, rhs)
-        
-        p_gas = p_chl
         p_c_old = np.copy(p_c)
         
         p_c_new = p_liquid - p_gas
@@ -159,7 +169,7 @@ for j in range(len(current_density)):
     print('Error: ', eps)
     print('Average saturation (-): ', np.average(s))
     print('Average capillary pressure (Pa): ', np.average(p_c))
-    print('GDL-channel interface Saturation (-): ', s[-1])
+    print('GDL-channel interface saturation (-): ', s[-1])
 
     capillary_pressure_avg.append(np.average(p_c))
     saturation_avg.append(np.average(s))
@@ -172,10 +182,20 @@ saturation_avg = np.asarray(saturation_avg)
 fig, ax = plt.subplots(dpi=100)
 
 # ax.plot(current_density, saturation_avg)
-ax.plot(z*1e6, s)
+ax.plot(z*1e6, s, color='k')
+ax.set_xlabel('GDL Location / µm')
+ax.set_ylabel('Saturation / -')
+ax2 = ax.twinx()
+ax2.plot(z*1e6, p_liquid, color='r')
+# ax2.plot(z*1e6, p_gas * np.ones(nz), color='b')
+ax2.set_ylabel('Pressure / Pa')
+ax.legend(['Saturation'], loc='center left')
+ax2.legend(['Pressure'], loc='lower left')
+
 # ax.set_ylim(0.0, 1.1)
 
 # plt.plot(z, s_1)
+plt.tight_layout()
 plt.show()
 
     

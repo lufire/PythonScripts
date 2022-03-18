@@ -13,22 +13,24 @@ from matplotlib import pyplot as plt
 
 SQRT_2 = math.sqrt(2.0)
 SQRT_2PI = math.sqrt(2.0 * math.pi)
+SMALL = 1e-10
 
 
-def leverett_hi(s):
-    return 1.417 * (1.0 - s) - 2.120 * (1.0 - s) ** 2 \
-        + 1.263 * (1.0 - s) ** 3
+def leverett_hi(saturation):
+    return 1.417 * (1.0 - saturation) - 2.120 * (1.0 - saturation) ** 2.0 \
+        + 1.263 * (1.0 - saturation) ** 3.0
 
 
-def leverett_ho(s):
-    return 1.417 * s - 2.120 * s ** 2 + 1.263 * s ** 3
+def leverett_ho(saturation):
+    return 1.417 * saturation - 2.120 * saturation ** 2.0 \
+           + 1.263 * saturation ** 3.0
 
 
-def leverett_j(s, theta):
-    if theta < 90.0:
-        return leverett_hi(s)
+def leverett_j(saturation, contact_angle):
+    if contact_angle < 90.0:
+        return leverett_hi(saturation)
     else:
-        return leverett_ho(s)
+        return leverett_ho(saturation)
 
 
 def leverett_p_s(saturation, surface_tension, contact_angle, 
@@ -64,6 +66,10 @@ def get_critical_radius(capillary_pressure, sigma, contact_angle):
     critical_radius_hydrophobic = \
         np.where(capillary_pressure < 0.0, np.inf,
                  young_laplace(capillary_pressure, sigma, contact_angle[1]))
+
+    # critical_radius_hydrophilic[critical_radius_hydrophilic < 0.0] = SMALL
+    # critical_radius_hydrophobic[critical_radius_hydrophobic < 0.0] = SMALL
+
     return np.asarray([critical_radius_hydrophilic,
                        critical_radius_hydrophobic])
 
