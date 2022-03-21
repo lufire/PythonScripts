@@ -45,16 +45,16 @@ def leverett_s_p(capillary_pressure, surface_tension, contact_angle,
 # parameters
 temp = 343.15
 surface_tension = 0.07275 * (1.0 - 0.002 * (temp - 291.0))
-porosity = 0.5
+porosity = 0.2
 permeability = 6.2e-12
 contact_angles = [80.0, 100.0]
 
 # psd specific parameters
 r_k = np.asarray([[14.20e-6, 34.00e-6], [14.20e-6, 34.00e-6]])
-F_HI = 0.5
+F_HI = 0.08
 F = np.asarray([F_HI, 1.0 - F_HI])
 f_k = np.asarray([[0.28, 0.72], [0.28, 0.72]])
-s_k = np.asarray([[1.0, 0.35], [1.0, 0.35]])
+s_k = np.asarray([[0.35, 1.0], [0.35, 1.0]])
 
 # calculate saturation from given capillariy pressures
 capillary_pressure = np.linspace(-5000.0, 5000.0, 500)

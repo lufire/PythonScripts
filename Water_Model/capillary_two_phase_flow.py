@@ -20,7 +20,7 @@ import saturation as sat
 
 # boundary conditions
 current_density = np.linspace(100.0, 30000.0, 100)
-current_density = [10000.0]
+current_density = [100.0]
 temp = 343.15
 
 # parameters
@@ -41,11 +41,25 @@ porosity = 0.5
 permeability_abs = 6.2e-12
 
 # mixed wettability model parameters
+# r_k = np.asarray([[14.20e-6, 34.00e-6], [14.20e-6, 34.00e-6]])
+# F_HI = 0.1
+# F = np.asarray([F_HI, 1.0 - F_HI])
+# f_k = np.asarray([[0.28, 0.72], [0.28, 0.72]])
+# s_k = np.asarray([[1.0, 0.35], [1.0, 0.35]])
+
+# r_k = np.asarray([[34.20e-6, 34.00e-6], [34.20e-6, 34.00e-6]])
+# F_HI = 0.08
+# F = np.asarray([F_HI, 1.0 - F_HI])
+# f_k = np.asarray([[0.5, 0.5], [0.5, 0.5]])
+# s_k = np.asarray([[0.5, 0.5], [0.5, 0.5]])
+
+# psd specific parameters
 r_k = np.asarray([[14.20e-6, 34.00e-6], [14.20e-6, 34.00e-6]])
 F_HI = 0.08
 F = np.asarray([F_HI, 1.0 - F_HI])
 f_k = np.asarray([[0.28, 0.72], [0.28, 0.72]])
-s_k = np.asarray([[1.0, 0.35], [1.0, 0.35]])
+s_k = np.asarray([[0.35, 1.0], [0.35, 1.0]])
+
 contact_angles = np.asarray([80.0, 100.0])
 
 # parameters SGG comparison
@@ -53,9 +67,9 @@ thickness = 200e-6
 porosity = 0.5
 permeability_abs = 6.2e-12
 contact_angles = np.asarray([80.0, 100.0])
-contact_angle = contact_angles[0]
+contact_angle = contact_angles[1]
 # capillary pressure - saturation correlation model ('leverett', 'psd')
-saturation_model = 'leverett'
+saturation_model = 'psd'
 
 # parameter lists
 params_psd = [sigma_water, contact_angles, F, f_k, r_k, s_k]
@@ -67,7 +81,7 @@ z = np.linspace(0, thickness, nz, endpoint=True)
 dz = thickness / nz
 
 # saturation bc
-s_chl = 0.05
+s_chl = 0.001
 
 # initial saturation
 s_0 = np.ones(z.shape) * s_chl
@@ -91,7 +105,7 @@ k_const = rho_water / mu_water * permeability_abs
 
 capillary_pressure_avg = []
 saturation_avg = []
-p_c = np.ones(nz) * 1e8
+p_c = np.ones(nz)
 p_liquid = np.zeros(nz)
 p_gas = np.zeros(nz)
 for j in range(len(current_density)):
@@ -108,7 +122,7 @@ for j in range(len(current_density)):
         k[:] = k_const * k_s(s)
         # k_f = (k[:-1] + k[1:]) * 0.5
         z_f = (z[:-1] + z[1:]) * 0.5
-        k_f = interpolate.interp1d(z, k, kind='cubic')(z_f)
+        k_f = interpolate.interp1d(z, k, kind='linear')(z_f)
         k_chl = k_const * k_s(s_chl)
 
         k_0 = k[0]
