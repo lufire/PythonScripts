@@ -13,6 +13,7 @@ Society 151, no. 3 (2004): A399. https://doi.org/10.1149/1.1646148.
 import math
 import numpy as np
 from scipy import optimize
+import time
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 # import sympy as sy
@@ -45,14 +46,14 @@ z = np.linspace(0, thickness, nz)
 dz = thickness / nz
 
 # saturation bc
-s_chl = 0.000
+s_chl = 0.05
 
 # initial saturation
 s_0 = np.ones(z.shape) * s_chl
 
 # channel pressure
 p_chl = 101325.0
-mu_water = rho_water / mu_water
+nu_water = mu_water / rho_water
 water_flux = current_density[0] / (2.0 * faraday) * mm_water
 
 
@@ -68,43 +69,82 @@ constants = []
 for contact_angle in contact_angles:
     theta = contact_angle * math.pi / 180.0
     c = saturation_func(s_chl, contact_angle) \
-        - water_flux * mu_water * z[-1] / \
+        - water_flux * nu_water * z[-1] / \
         (sigma_water * math.cos(theta) * math.sqrt(porosity * permeability_abs))
     constants.append(c)
 saturation_avg = []
 saturations = []
-for i in range(len(contact_angles)):
-    theta = contact_angles[i] * math.pi / 180.0
 
-    def root_saturation_hi(s):
-        return s ** 4.0 * (-0.2415 + 0.66765 * s - 0.6135 * s ** 2.0) \
-            - water_flux * mu_water * z[1] / \
-            (sigma_water * math.cos(theta)
-             * math.sqrt(porosity * permeability_abs)) \
-            - constants[i]
+start_time = time.time()
+for j in range(1):
 
-    def root_saturation_ho(s):
-        return s ** 4.0 * (0.35425 - 0.8480 * s + 0.6135 * s ** 2.0) \
-            - water_flux * mu_water * z[1] / \
-            (sigma_water * math.cos(theta)
-             * math.sqrt(porosity * permeability_abs)) \
-            - constants[i]
+    for i in range(len(contact_angles)):
+        theta = contact_angles[i] * math.pi / 180.0
 
-    # s_0 = np.ones(nz) * 0.00
-    s_0 = 0.00
+        def der_root_saturation_hi(s):
+            return - 4.0 * 0.2415 * s ** 3.0 + 5.0 * 0.66765 * s ** 4.0 - 6.0 * \
+                   0.6135 * s ** 5.0
 
-    if contact_angles[i] < 90.0:
-        saturation = optimize.root(root_saturation_hi, s_0).x
-    else:
-        saturation = optimize.root(root_saturation_ho, s_0).x
+        def der_root_saturation_ho(s):
+            return 4.0 * 0.35425 * s ** 3.0 - 5.0 * 0.8480 * s ** 4.0 + 6.0 * \
+                   0.6135 * s ** 5.0
 
-    saturations.append(saturation)
-    print('Current density (A/m²): ', current_density[0])
+        def der_root_saturation(s):
+            if contact_angles[i] < 90.0:
+                return - 0.966 * s ** 3.0 + 3.33825 * s ** 4.0 - \
+                       3.681 * s ** 5.0
+            else:
+                return 1.417 * s ** 3.0 - 4.24 * s ** 4.0 + 3.681 * s ** 5.0
 
-    print('Average saturation (-): ', np.average(saturation))
-    print('GDL-channel interface saturation (-): ', saturation[-1])
+        def root_saturation_hi(s):
+            return s ** 4.0 * (-0.2415 + 0.66765 * s - 0.6135 * s ** 2.0) \
+                - water_flux * nu_water * z / \
+                (sigma_water * math.cos(theta)
+                 * math.sqrt(porosity * permeability_abs)) \
+                - constants[i]
 
-    saturation_avg.append(np.average(saturation))
+        def root_saturation_ho(s):
+            return s ** 4.0 * (0.35425 - 0.8480 * s + 0.6135 * s ** 2.0) \
+                - water_flux * nu_water * z / \
+                (sigma_water * math.cos(theta)
+                 * math.sqrt(porosity * permeability_abs)) \
+                - constants[i]
+
+
+        def root_saturation(s):
+            return saturation_func(s, contact_angles[i]) \
+                   - water_flux * nu_water * z / \
+                   (sigma_water * math.cos(theta)
+                    * math.sqrt(porosity * permeability_abs)) \
+                   - constants[i]
+        s_0 = np.ones(nz) * 0.01
+        # s_0 = 0.001
+
+        # if contact_angles[i] < 90.0:
+        #     # solution = optimize.newton(root_saturation_hi, s_0,
+        #     #                            fprime=der_root_saturation_hi)
+        #     solution = optimize.newton(root_saturation_hi, s_0)
+        # else:
+        #     # solution = optimize.newton(root_saturation_ho, s_0,
+        #     #                            fprime=der_root_saturation_ho)
+        #     solution = optimize.newton(root_saturation_ho, s_0)
+        # saturation = optimize.newton(root_saturation, s_0)
+        saturation = optimize.newton(root_saturation, s_0,
+                                     fprime=der_root_saturation)
+        # saturation = solution
+
+        # print(solution.message)
+        saturations.append(saturation)
+        # print('Current density (A/m²): ', current_density[0])
+        #
+        # print('Average saturation (-): ', np.average(saturation))
+        # print('GDL-channel interface saturation (-): ', saturation[-1])
+
+        saturation_avg.append(np.average(saturation))
+
+end_time = time.time()
+
+print(end_time - start_time)
 
 saturation_avg = np.asarray(saturation_avg)
 
@@ -116,8 +156,9 @@ markers = ['.', '.', '.']
 colors = ['k', 'r', 'b']
 labels = ['Leverett-J {}°'.format(str(int(item))) for item in contact_angles]
 labels.append('PSD')
-for i in range(len(saturations)):
-    ax.plot(z[0]*1e6, saturations[i], linestyle=linestyles[i], marker=markers[i],
+
+for i in range(len(contact_angles)):
+    ax.plot(z * 1e6, saturations[i], linestyle=linestyles[i], marker=markers[i],
             color=colors[i], label=labels[i])
 ax.legend()
 

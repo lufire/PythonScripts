@@ -41,14 +41,17 @@ def leverett_p_s(saturation, surface_tension, contact_angle,
 
 
 def leverett_s_p(capillary_pressure, surface_tension, contact_angle,
-                 porosity, permeability):
+                 porosity, permeability, saturation_prev=None):
     factor = - surface_tension * np.cos(contact_angle * np.pi / 180.0) \
         * np.sqrt(porosity / permeability)
 
-    def root_leverett_p_s(saturation):
-        return factor * leverett_j(saturation, contact_angle) \
+    def root_leverett_p_s(s):
+        return factor * leverett_j(s, contact_angle) \
                - capillary_pressure
-    s_in = np.zeros(np.asarray(capillary_pressure).shape) + 1e-3
+    if saturation_prev is not None:
+        s_in = saturation_prev
+    else:
+        s_in = np.zeros(np.asarray(capillary_pressure).shape) + 0.01
     saturation = optimize.root(root_leverett_p_s, s_in).x
     return saturation
 
@@ -84,9 +87,14 @@ def get_saturation_leverett(capillary_pressure, params):
         raise IndexError('params input list not complete, must include: '
                          'surface_tension:float, contact_angle:float, '
                          'porosity:float, permeability:float')
+    try:
+        saturation_prev = params[4]
+    except IndexError:
+        saturation_prev = None
+
     saturation = \
         leverett_s_p(capillary_pressure, surface_tension, contact_angle, 
-                     porosity, permeability)
+                     porosity, permeability, saturation_prev=saturation_prev)
     # return saturation
     return np.where(saturation < 0.0, 0.0,
                     np.where(saturation > 1.0, 1.0, saturation))
