@@ -46,7 +46,7 @@ z = np.linspace(0, thickness, nz)
 dz = thickness / nz
 
 # saturation bc
-s_chl = 0.05
+s_chl = 0.001
 
 # initial saturation
 s_0 = np.ones(z.shape) * s_chl

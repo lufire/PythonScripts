@@ -20,7 +20,7 @@ import saturation as sat
 
 # boundary conditions
 current_density = np.linspace(100.0, 30000.0, 100)
-current_density = [100.0]
+current_density = [10000.0]
 temp = 343.15
 
 # parameters
@@ -69,22 +69,22 @@ permeability_abs = 6.2e-12
 contact_angles = np.asarray([80.0, 100.0])
 contact_angle = contact_angles[1]
 # capillary pressure - saturation correlation model ('leverett', 'psd')
-saturation_model = 'psd'
+saturation_model = 'leverett'
 
 # parameter lists
 params_psd = [sigma_water, contact_angles, F, f_k, r_k, s_k]
 params_leverett = [sigma_water, contact_angle, porosity]
 
 # numerical discretization
-nz = 100
+nz = 20
 z = np.linspace(0, thickness, nz, endpoint=True)
 dz = thickness / nz
 
 # saturation bc
-s_chl = 0.001
+s_chl = 0.01
 
 # initial saturation
-s_0 = np.ones(z.shape) * s_chl
+s_0 = np.ones(z.shape) * 0.01
 
 # channel pressure
 p_chl = 101325.0
@@ -95,7 +95,7 @@ urf = 0.5
 # relative permeability
 def k_s(saturation):
     saturation = np.copy(saturation)
-    saturation[saturation == 0.0] = s_chl
+    saturation[saturation == 0.0] = 1e-6
     return saturation ** 3.0
 
 
@@ -108,38 +108,72 @@ saturation_avg = []
 p_c = np.ones(nz)
 p_liquid = np.zeros(nz)
 p_gas = np.zeros(nz)
+s = np.copy(s_0)
+params_leverett.append(k_const)
+params_leverett.append(s)
+
 for j in range(len(current_density)):
     
     water_flux = current_density[j] / (2.0 * faraday) * mm_water
-    s = np.copy(s_0)
+    # s = np.copy(s_0)
     iter_max = 100
     iter_min = 3
     eps = np.inf
-    error_tol = 1e-6
+    error_tol = 1e-8
     i = 0
+    s_chl = s[-1]
     while i < iter_min or (i < iter_max and eps > error_tol):
+
+        p_gas[:] = p_chl
+        if saturation_model == 'leverett':
+            k_chl = k_const * k_s(s[-1])
+            p_liquid_chl = sat.leverett_p_s(s_chl, sigma_water, contact_angle,
+                                            porosity, k_chl) + p_chl
+        elif saturation_model == 'psd':
+            p_liquid_chl = \
+                sat.get_capillary_pressure_psd(
+                    s_chl, params_psd, capillary_pressure_prev=p_c[-1]) \
+                + p_chl
+        else:
+            raise NotImplementedError
+
+        p_liquid[-1] = p_liquid_chl
+
+        # k_bc = 1e-3
+        # p_0 = 1.0
+        # p_liquid[:] = p_chl + water_flux * p_0 / k_bc
+
+        # p_c_chl = p_liquid[-1] - p_gas[-1]
+        # k_chl = k_const * k_s(s[-1])
+        # params_leverett[3] = k_chl
+        # params_leverett[4] = s[-1]
+        # s_chl = sat.get_saturation(p_c_chl, params_psd, params_leverett,
+        #                            model_type=saturation_model)
+        #
+        # s[:] = s_chl
+
         k = np.zeros(s.shape)
         k[:] = k_const * k_s(s)
         # k_f = (k[:-1] + k[1:]) * 0.5
         z_f = (z[:-1] + z[1:]) * 0.5
         k_f = interpolate.interp1d(z, k, kind='linear')(z_f)
-        k_chl = k_const * k_s(s_chl)
+        # k_chl = k[-1]
 
         k_0 = k[0]
-        # setup main diagonal    
-        center_diag = np.zeros(nz-1)
+        # setup main diagonal
+        center_diag = np.zeros(nz - 1)
         center_diag[1:] += k_f[:-1]
         center_diag[:] += k_f
         # boundary conditions (0: Neumann, nz-1: Dirichlet)
         center_diag[0] += k[0]
         # center_diag[-1] = 1.0
         center_diag *= -1
-        
+
         # setup offset diagonals
-        lower_diag = np.zeros(nz-2)
+        lower_diag = np.zeros(nz - 2)
         lower_diag[:] = k_f[:-1]
 
-        upper_diag = np.zeros(nz-2)
+        upper_diag = np.zeros(nz - 2)
         upper_diag[:] = k_f[:-1]
         upper_diag[0] += k[0]
 
@@ -149,17 +183,12 @@ for j in range(len(current_density)):
 
         if nz > 200:
             A_matrix = sparse.csr_matrix(A_matrix)
-            
-        # setup right hand side
-        p_gas[:] = p_chl
-        p_liquid_chl = sat.leverett_p_s(s_chl, sigma_water, contact_angle,
-                                        porosity, k_chl) + p_chl
-        p_liquid[-1] = p_liquid_chl
 
+        # setup right hand side
         rhs = np.zeros(nz-1)
         rhs[:] = - source
         rhs[0] += - water_flux * 2.0 / dz
-        rhs[-1] += - k_f[-1] * p_liquid_chl / dz ** 2.0
+        rhs[-1] += - k_f[-1] * p_liquid[-1] / dz ** 2.0
 
         if nz > 200:
             p_liquid[:-1] = spsolve(A_matrix, rhs)
@@ -175,8 +204,8 @@ for j in range(len(current_density)):
         # s_new = \
         #     sat.get_saturation_psd(p_c, sigma_water, contact_angle,
         #                            F, f_k, r_k, s_k)
-        params_leverett.append(k)
-        params_leverett.append(s_old)
+        params_leverett[3] = k
+        params_leverett[4] = s_0
         s_new = \
             sat.get_saturation(p_c, params_psd, params_leverett,
                                saturation_model)
@@ -214,11 +243,11 @@ saturation_avg = np.asarray(saturation_avg)
 fig, ax = plt.subplots(dpi=100)
 
 # ax.plot(current_density, saturation_avg)
-ax.plot(z*1e6, s, color='k')
+ax.plot(z * 1e6, s, color='k')
 ax.set_xlabel('GDL Location / µm')
 ax.set_ylabel('Saturation / -')
 ax2 = ax.twinx()
-ax2.plot(z*1e6, p_liquid, color='r')
+ax2.plot(z * 1e6, p_c, color='r')
 # ax2.plot(z*1e6, p_gas * np.ones(nz), color='b')
 ax2.set_ylabel('Pressure / Pa')
 ax.legend(['Saturation'], loc='center left')

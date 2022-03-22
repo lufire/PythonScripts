@@ -58,6 +58,7 @@ s_k = np.asarray([[0.35, 1.0], [0.35, 1.0]])
 
 # calculate saturation from given capillariy pressures
 capillary_pressure = np.linspace(-5000.0, 5000.0, 500)
+capillary_pressure = np.linspace(11, 13.0, 100)
 saturations = []
 for contact_angle in contact_angles:
     params_leverett = [surface_tension, contact_angle, porosity, permeability]
