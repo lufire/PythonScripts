@@ -20,7 +20,7 @@ import saturation as sat
 
 # boundary conditions
 current_density = np.linspace(100.0, 30000.0, 100)
-current_density = [100.0]
+current_density = [10000.0]
 temp = 343.15
 
 # parameters
@@ -69,19 +69,19 @@ permeability_abs = 6.2e-12
 contact_angles = np.asarray([80.0, 100.0])
 contact_angle = contact_angles[1]
 # capillary pressure - saturation correlation model ('leverett', 'psd')
-saturation_model = 'psd'
+saturation_model = 'leverett'
 
 # parameter lists
 params_psd = [sigma_water, contact_angles, F, f_k, r_k, s_k]
-params_leverett = [sigma_water, contact_angle, porosity]
+params_leverett = [sigma_water, contact_angle, porosity, permeability_abs]
 
 # numerical discretization
-nz = 100
+nz = 20
 z = np.linspace(0, thickness, nz, endpoint=True)
 dz = thickness / nz
 
 # saturation bc
-s_chl = 0.001
+s_chl = 0.5
 
 # initial saturation
 s_0 = np.ones(z.shape) * s_chl
@@ -89,14 +89,7 @@ s_0 = np.ones(z.shape) * s_chl
 # channel pressure
 p_chl = 101325.0
 
-urf = 0.5
-
-
-# relative permeability
-def k_s(saturation):
-    saturation = np.copy(saturation)
-    saturation[saturation == 0.0] = s_chl
-    return saturation ** 3.0
+urf = 0.6
 
 
 source = np.zeros(nz-1)
@@ -108,22 +101,23 @@ saturation_avg = []
 p_c = np.ones(nz)
 p_liquid = np.zeros(nz)
 p_gas = np.zeros(nz)
+s = np.copy(s_0)
+params_leverett.append(s)
 for j in range(len(current_density)):
     
     water_flux = current_density[j] / (2.0 * faraday) * mm_water
-    s = np.copy(s_0)
-    iter_max = 100
+    iter_max = 10000
     iter_min = 3
     eps = np.inf
     error_tol = 1e-6
     i = 0
     while i < iter_min or (i < iter_max and eps > error_tol):
         k = np.zeros(s.shape)
-        k[:] = k_const * k_s(s)
+        k[:] = k_const * sat.k_s(s)
         # k_f = (k[:-1] + k[1:]) * 0.5
         z_f = (z[:-1] + z[1:]) * 0.5
         k_f = interpolate.interp1d(z, k, kind='linear')(z_f)
-        k_chl = k_const * k_s(s_chl)
+        k_chl = k_const * sat.k_s(s_chl)
 
         k_0 = k[0]
         # setup main diagonal    
@@ -170,17 +164,17 @@ for j in range(len(current_density)):
         
         p_c_new = p_liquid - p_gas
 
-        p_c = urf * p_c_old + (1.0 - urf) * p_c_new
+        p_c = p_c_new # urf * p_c_old + (1.0 - urf) * p_c_new
         s_old = np.copy(s)
         # s_new = \
         #     sat.get_saturation_psd(p_c, sigma_water, contact_angle,
         #                            F, f_k, r_k, s_k)
-        params_leverett.append(k)
-        params_leverett.append(s_old)
+        # params_leverett[3] = k
+        # params_leverett[4] = None
         s_new = \
             sat.get_saturation(p_c, params_psd, params_leverett,
                                saturation_model)
-        s = urf * s_new + (1.0 - urf) * s_old
+        s = (1.0 - urf) * s_new + urf * s_old
         s_diff = s - s_old
         p_diff = p_c - p_c_old
         eps_s = np.dot(s_diff.transpose(), s_diff) / (2.0 * len(s_diff))

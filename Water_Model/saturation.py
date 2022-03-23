@@ -52,8 +52,16 @@ def leverett_s_p(capillary_pressure, surface_tension, contact_angle,
         s_in = saturation_prev
     else:
         s_in = np.zeros(np.asarray(capillary_pressure).shape) + 0.01
-    saturation = optimize.root(root_leverett_p_s, s_in).x
+    solution = optimize.newton(root_leverett_p_s, s_in)
+    saturation = solution
     return saturation
+
+
+# relative permeability
+def k_s(s, s_min=1e-6):
+    s = np.copy(s)
+    s[s == 0.0] = s_min
+    return s ** 3.0
 
 
 def young_laplace(capillary_pressure, sigma, contact_angle):
