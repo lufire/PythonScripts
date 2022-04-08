@@ -20,7 +20,7 @@ import saturation as sat
 
 # boundary conditions
 current_density = np.linspace(100.0, 30000.0, 100)
-current_density = [10000.0]
+current_density = [20000.0]
 temp = 343.15
 
 # parameters
@@ -55,7 +55,7 @@ permeability_abs = 6.2e-12
 
 # psd specific parameters
 r_k = np.asarray([[14.20e-6, 34.00e-6], [14.20e-6, 34.00e-6]])
-F_HI = 0.08
+F_HI = 0.1
 F = np.asarray([F_HI, 1.0 - F_HI])
 f_k = np.asarray([[0.28, 0.72], [0.28, 0.72]])
 s_k = np.asarray([[0.35, 1.0], [0.35, 1.0]])
@@ -67,7 +67,7 @@ thickness = 200e-6
 porosity = 0.5
 permeability_abs = 6.2e-12
 contact_angles = np.asarray([80.0, 120.0])
-contact_angle = contact_angles[1]
+contact_angle = contact_angles[0]
 # capillary pressure - saturation correlation model ('leverett', 'psd')
 saturation_model = 'leverett'
 
@@ -76,12 +76,12 @@ params_psd = [sigma_water, contact_angles, F, f_k, r_k, s_k]
 params_leverett = [sigma_water, contact_angle, porosity, permeability_abs]
 
 # numerical discretization
-nz = 3
+nz = 20
 z = np.linspace(0, thickness, nz, endpoint=True)
 dz = thickness / nz
 
 # saturation bc
-s_chl = 0.01
+s_chl = 0.1
 
 # initial saturation
 s_0 = np.ones(z.shape) * s_chl

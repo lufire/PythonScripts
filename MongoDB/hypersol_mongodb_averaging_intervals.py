@@ -69,7 +69,7 @@ sample_name_re = re.compile(sample_name, re.I)
 # find entry in database collection
 raw_db_entries = raw_collection.find()
 
-averaged_collection = db['Averaged']
+averaged_collection = db['Averaged_2']
 
 # %%
 
