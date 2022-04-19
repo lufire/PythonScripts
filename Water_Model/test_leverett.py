@@ -57,7 +57,7 @@ f_k = np.asarray([[0.28, 0.72], [0.28, 0.72]])
 s_k = np.asarray([[0.35, 1.0], [0.35, 1.0]])
 
 # calculate saturation from given capillariy pressures
-capillary_pressure = np.linspace(-5000.0, 5000.0, 500)
+capillary_pressure = np.linspace(-10000.0, 10000.0, 500)
 # capillary_pressure = np.linspace(11, 13.0, 100)
 saturations = []
 for contact_angle in contact_angles:
@@ -72,7 +72,7 @@ saturations.append(sat.get_saturation(
 # create plots
 fig, ax = plt.subplots(dpi=150)
 
-linestyles = ['solid', 'solid', 'solid']
+linestyles = ['solid', 'dotted', 'dashed']
 colors = ['k', 'r', 'b']
 labels = ['Leverett-J {}°'.format(str(int(item))) for item in contact_angles]
 labels.append('PSD')
