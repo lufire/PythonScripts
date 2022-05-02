@@ -9,7 +9,7 @@ import re
 import pandas as pd
 from pymongo import MongoClient
 from datetime import datetime
-
+import mongodb_credentials as mc
 
 # In[2]:
 
@@ -39,11 +39,11 @@ print(file_paths)
 
 
 # initialize mongo connector object with ip adress
-client = MongoClient('zbts07')
+client = MongoClient(mc.HOST_NAME)
 # get reference to existing database testDB
 db = client.HyperSol
 # authentication within database
-db.authenticate('lfd', 'qwertz', source='admin')
+db.authenticate(mc.USER_NAME, mc.PASSWORD, source='admin')
 # reference collection, if not existent it will be created
 current_collection = db['Raw']
 

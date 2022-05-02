@@ -18,6 +18,7 @@ import json
 # from itertools import cycle
 from collections import OrderedDict
 import plotly.graph_objects as go
+import mongodb_credentials as mc
 # import plotly.io as pio
 # from fpdf import FPDF
 # from tabulate import tabulate
@@ -27,11 +28,11 @@ import plotly.graph_objects as go
 
 
 # initialize mongo connector object with ip adress
-client = MongoClient('zbts07')
+client = MongoClient(mc.HOST_NAME)
 # get reference to existing database testDB
 db = client.HyperSol
 # authentication within database
-db.authenticate('lfd', 'qwertz', source='admin')
+db.authenticate(mc.USER_NAME, mc.PASSWORD, source='admin')
 
 
 # In[4]:
