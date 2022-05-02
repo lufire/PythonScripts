@@ -108,19 +108,8 @@ def get_saturation_leverett(capillary_pressure, params):
                     np.where(saturation > 1.0, 1.0, saturation))
 
 
-def get_saturation_psd(capillary_pressure, params):
-    try:
-        surface_tension = params[0]
-        contact_angles = params[1]
-        F = params[2]
-        f = params[3]
-        r = params[4]
-        s = params[5]
-    except IndexError:
-        raise IndexError('params input list not complete, must include: '
-                         'surface_tension:float, contact_angle:list, F:list,'
-                         'f:list, r:list, s:list')
-
+def calc_saturation_psd(capillary_pressure, surface_tension, contact_angles,
+                        F, f, r, s):
     critical_radius = get_critical_radius(capillary_pressure, surface_tension,
                                           contact_angles)
     saturation = np.zeros(critical_radius.shape[-1])
@@ -134,6 +123,23 @@ def get_saturation_psd(capillary_pressure, params):
     return saturation
 
 
+def get_saturation_psd(capillary_pressure, params):
+    try:
+        surface_tension = params[0]
+        contact_angles = params[1]
+        F = params[2]
+        f = params[3]
+        r = params[4]
+        s = params[5]
+    except IndexError:
+        raise IndexError('params input list not complete, must include: '
+                         'surface_tension:float, contact_angle:list, F:list,'
+                         'f:list, r:list, s:list')
+
+    return calc_saturation_psd(capillary_pressure, surface_tension,
+                               contact_angles, F, f, r, s)
+
+
 def get_saturation(capillary_pressure, params_psd, params_leverett, model_type):
     if model_type == 'psd':
         return get_saturation_psd(capillary_pressure, params_psd)
@@ -141,6 +147,31 @@ def get_saturation(capillary_pressure, params_psd, params_leverett, model_type):
         return get_saturation_leverett(capillary_pressure, params_leverett)
     else:
         raise NotImplementedError()
+
+
+def get_capillary_pressure_psd(saturation, params,
+                               capillary_pressure_prev=None):
+    try:
+        surface_tension = params[0]
+        contact_angles = params[1]
+        F = params[2]
+        f = params[3]
+        r = params[4]
+        s = params[5]
+    except IndexError:
+        raise IndexError('params input list not complete, must include: '
+                         'surface_tension:float, contact_angle:list, F:list,'
+                         'f:list, r:list, s:list')
+
+    def root_saturation_psd(capillary_pressure):
+        return saturation - \
+               calc_saturation_psd(capillary_pressure, surface_tension,
+                                   contact_angles, F, f, r, s)
+    if capillary_pressure_prev is not None:
+        p_c_in = capillary_pressure_prev
+    else:
+        p_c_in = np.ones(np.asarray(saturation).shape)
+    return optimize.root(root_saturation_psd, p_c_in).x
 
 
 if __name__ == "__main__":

@@ -12,14 +12,15 @@ from pymongo import MongoClient
 import json
 from collections import OrderedDict
 from datetime import datetime, timedelta
+import mongodb_credentials as mc
 
 
 # initialize mongo connector object with ip adress
-client = MongoClient('xxx')
+client = MongoClient(mc.HOST_NAME)
 # get reference to existing database testDB
-db = client.testDB
+db = client.HyperSol
 # authentication within database
-db.authenticate('xxx', 'xxx', source='xxx')
+db.authenticate(mc.USER_NAME, mc.PASSWORD, source='admin')
 
 # path to mass spectrum calibration data
 ms_calibration_data_file = r'W:\Projekte\NRW_HyperSol_61904\Bearbeitung'\

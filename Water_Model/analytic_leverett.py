@@ -24,7 +24,7 @@ import saturation as sat
 
 # boundary conditions
 current_density = np.linspace(100.0, 30000.0, 100)
-current_density = [10000.0]
+current_density = [20000.0]
 temp = 343.15
 
 # parameters
@@ -35,10 +35,10 @@ mm_water = 0.018
 sigma_water = 0.07275 * (1.0 - 0.002 * (temp - 291.0))
 
 # comparison SGG
-thickness = 200e-6
-porosity = 0.5
-permeability_abs = 6.2e-12
-contact_angles = np.asarray([80.0, 100.0])
+thickness = 260e-6
+porosity = 0.74
+permeability_abs = 1.88e-11
+contact_angles = np.asarray([70.0, 130.0])
 
 # numerical discretization
 nz = 100
@@ -46,7 +46,7 @@ z = np.linspace(0, thickness, nz)
 dz = thickness / nz
 
 # saturation bc
-s_chl = 0.05
+s_chl = 0.001
 
 # initial saturation
 s_0 = np.ones(z.shape) * s_chl
@@ -149,28 +149,28 @@ print(end_time - start_time)
 saturation_avg = np.asarray(saturation_avg)
 
 # create plots
-fig, ax = plt.subplots(dpi=150)
-
-linestyles = ['solid', 'solid', 'solid']
-markers = ['.', '.', '.']
-colors = ['k', 'r', 'b']
-labels = ['Leverett-J {}°'.format(str(int(item))) for item in contact_angles]
-labels.append('PSD')
-
-for i in range(len(contact_angles)):
-    ax.plot(z * 1e6, saturations[i], linestyle=linestyles[i], marker=markers[i],
-            color=colors[i], label=labels[i])
-ax.legend()
-
-# ax.set_xlim([0.0, 1.0])
-# ax.set_ylim([-2000, 2000.0])
-# s = np.linspace(0.0, 1.0, 100)
-# j = leverett_j(s, contact_angle)
-
 # fig, ax = plt.subplots(dpi=150)
-# ax.plot(s, j)
-plt.tight_layout()
-plt.show()
+#
+# linestyles = ['solid', 'solid', 'solid']
+# markers = ['.', '.', '.']
+# colors = ['k', 'r', 'b']
+# labels = ['Leverett-J {}°'.format(str(int(item))) for item in contact_angles]
+# labels.append('PSD')
+#
+# for i in range(len(contact_angles)):
+#     ax.plot(z * 1e6, saturations[i], linestyle=linestyles[i], marker=markers[i],
+#             color=colors[i], label=labels[i])
+# ax.legend()
+#
+# # ax.set_xlim([0.0, 1.0])
+# # ax.set_ylim([-2000, 2000.0])
+# # s = np.linspace(0.0, 1.0, 100)
+# # j = leverett_j(s, contact_angle)
+#
+# # fig, ax = plt.subplots(dpi=150)
+# # ax.plot(s, j)
+# plt.tight_layout()
+# plt.show()
 
 
 

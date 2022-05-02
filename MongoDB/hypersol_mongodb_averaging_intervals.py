@@ -18,6 +18,7 @@ import json
 # from itertools import cycle
 from collections import OrderedDict
 import plotly.graph_objects as go
+import mongodb_credentials as mc
 # import plotly.io as pio
 # from fpdf import FPDF
 # from tabulate import tabulate
@@ -25,13 +26,12 @@ import plotly.graph_objects as go
 
 # In[3]:
 
-
 # initialize mongo connector object with ip adress
-client = MongoClient('zbts07')
+client = MongoClient(mc.HOST_NAME)
 # get reference to existing database testDB
 db = client.HyperSol
 # authentication within database
-db.authenticate('lfd', 'qwertz', source='admin')
+db.authenticate(mc.USER_NAME, mc.PASSWORD, source='admin')
 
 
 # In[4]:
@@ -69,7 +69,7 @@ sample_name_re = re.compile(sample_name, re.I)
 # find entry in database collection
 raw_db_entries = raw_collection.find()
 
-averaged_collection = db['Averaged']
+averaged_collection = db['Averaged_2']
 
 # %%
 
@@ -83,18 +83,15 @@ for db_entry in raw_db_entries:
         continue
     # if counter > 3:
     #     break
-# In[147]:
+    # In[147]:
     if count_docs == 0:
         counter += 1
         # make local directory to save data
         directory = os.path.join(plot_path, db_entry['Name'])
         if not os.path.exists(directory):
             os.mkdir(directory)
-        
-        
+
         # In[148]:
-        
-        
         # get database entry general information
         general_info_keys = ['Catalyst Sample', 'Experiment Type', 
                              'Gas Molar Composition (-)', 
@@ -102,11 +99,8 @@ for db_entry in raw_db_entries:
                              'Liquid Molar Composition (-)', 
                              'Liquid Flow Rate (g/h)', 'Radiation Source', 
                              'Temperature (C)']
-        
-        
+
         # In[149]:
-        
-        
         inlet_composition_key = 'Gas Molar Composition (-)'
         headers = ['Species', 'Molar Fraction (-)']
         headers = ['<b>' + header + '</b>'  for header in headers]
@@ -130,11 +124,8 @@ for db_entry in raw_db_entries:
         file_name = 'Inlet_Composition.png'
         fig.write_image(os.path.join(directory, file_name), scale=2)
         # pio.write_image(fig, os.path.join(directory, file_name), width=400, height=240, scale=2)
-        
-        
+
         # In[150]:
-        
-        
         liquid_composition_key = 'Liquid Molar Composition (-)'
         headers = ['Species', 'Molar Fraction (-)']
         headers = ['<b>' + header + '</b>'  for header in headers]
@@ -160,11 +151,8 @@ for db_entry in raw_db_entries:
             fig.write_image(os.path.join(directory, file_name), scale=2)
         
         # pio.write_image(fig, os.path.join(directory, file_name), width=400, height=240, scale=2)
-        
-        
+
         # In[151]:
-        
-        
         # manipulate db entry accordingly
         general_info_dict = OrderedDict({k: v for k, v in db_entry.items()
                              if k in general_info_keys})
@@ -202,8 +190,6 @@ for db_entry in raw_db_entries:
         
         
         # In[152]:
-        
-        
         # get data array from database entry
         source_data = db_entry['Data']
         data = {}
@@ -215,8 +201,7 @@ for db_entry in raw_db_entries:
         data['x'] = np.asarray(source_data[data['x_key']])
         # x_values = np.asarray([x_values for i in range(len(y_values))])
         data['bins'] = [int(y_key.split('_')[0]) for y_key in data['y_keys']]
-        
-        
+
         # remove data points with 28 signals below threshold
         amu_id = data['bins'].index(28)
         threshold = 1e-11
@@ -225,8 +210,6 @@ for db_entry in raw_db_entries:
         data['x'] = data['x'][filter_ids]
         
         # In[153]:
-        
-        
         # read amu species correspondence data
         with open(ms_calibration_data_file, 'r') as fp:
             ms_calibration_data_json = json.load(fp)
@@ -262,20 +245,14 @@ for db_entry in raw_db_entries:
         
         
         # In[154]:
-        
-        
         filtered_data = filter_data(data)
-
-
         # select only specific signal bins
         # species_list = ['H2', 'CH4', 'CO2']
         # amu_list = [1, 2, 15, 16, 19, 28, 44]
         amu_list = [1, 2, 15, 16, 19, 27, 28, 44, 45]
         custom_data = filter_data(data, amu_list=amu_list)
-        
 
-        # In[155]:        
-        
+        # In[155]:
         # time series plots with matplotlib
         # evaluation time limits
         t_start = 0.0
@@ -344,7 +321,6 @@ for db_entry in raw_db_entries:
                 if 'Lamp on' in annotation['Text']:
                     t_end_no_radiation = annotation['Relative Time (s)']
 
-        
         # graph with log scaled y-axis
         ax = fig.add_subplot(212)
         # linestyles = cycle(['solid', 'dotted'])
@@ -366,10 +342,8 @@ for db_entry in raw_db_entries:
         # save figure
         file_name = 'Raw_Spectrum.png'
         fig.savefig(os.path.join(directory, file_name), bbox_inches='tight')
-        
-        
+
         # In[156]:
-        
         if t_end_no_radiation is None:
             continue
         
@@ -407,10 +381,8 @@ for db_entry in raw_db_entries:
         filtered_amu_list_str = [str(i) for i in filtered_data['amus']]
         columns_dict = dict(zip(filtered_data['y_keys'], filtered_amu_list_str))
         df_mean = df_mean.rename(columns=columns_dict, index={0: 'Radiation off', 1: 'Radiation on'})
-        
-        
+
         # In[157]:
-        
         # plot mean signals
         # make plots
         fig, ax = plt.subplots()
@@ -424,17 +396,13 @@ for db_entry in raw_db_entries:
         ax.tick_params(axis='both', which='major', labelsize=16)
         ax.tick_params(axis='x', which='major', labelrotation=0)
         plt.show()
-        
-        
+
         # In[158]:
         # save figure
         file_name = 'Averaged_Spectrum.png'
         fig.savefig(os.path.join(directory, file_name), bbox_inches='tight')
-        
-        
+
         # In[159]:
-        
-        
         # replace data in database dict
         db_entry['Data'] = df_mean[filtered_amu_list_str].to_dict()
         db_entry['Averaging Intervals (s)'] = intervals.tolist()
