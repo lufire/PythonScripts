@@ -141,27 +141,21 @@ for data_path in file_paths_new:
     if annotations:
         annotations[0]['Text'] = annotations[0]['Text'].replace('0,6', '0.6')
         annotations
-    
-    
+
     # In[339]:
-    
-    
     # filter keys for even numbers (atom masses)
     data_dict_filtered = {k: v for k, v in data_dict.items() if '.' not in k}
     data_dict_filtered.update({k[:-3]: v for k, v in data_dict.items() if (k[-3:] == '.00')})
-    
-    
+
     # In[340]:
-    
-    
     def get_between(base_string, split_str, sep_str='_', after=False):
-            base_string = os.path.splitext(base_string)[0]
-            if after:
-                first_split = base_string.split(split_str)
-                return [item.split(sep_str)[0] for item in first_split[1:]]
-            else:
-                first_split = base_string.split(split_str)
-                return [item.split(sep_str)[-1] for item in first_split[:-1]]
+        base_string = os.path.splitext(base_string)[0]
+        if after:
+            first_split = base_string.split(split_str)
+            return [item.split(sep_str)[0] for item in first_split[1:]]
+        else:
+            first_split = base_string.split(split_str)
+            return [item.split(sep_str)[-1] for item in first_split[:-1]]
     
     gas_flow_values = [float(item.replace('p', '.')) for item 
                        in get_between(data_name, 'sccm')]
@@ -182,8 +176,6 @@ for data_path in file_paths_new:
         lamp = 'None'
     
     # In[341]:
-    
-    
     # create database entry
     vol_flow = vol_flows # {'CO2': 1.0}
     vol_flow_total = sum(vol_flow.values())
@@ -221,22 +213,9 @@ for data_path in file_paths_new:
 
 # In[342]:
 
-
-# initialize mongo connector object with ip adress
-client = MongoClient('zbts07')
-# get reference to existing database testDB
-db = client.HyperSol
-# authentication within database
-db.authenticate('lfd', 'qwertz', source='admin')
-
-
-# In[343]:
-
 # insert loaded entry into database collection
 current_collection.insert_many(db_entry_dicts)
 
-
-# In[ ]:
 
 
 
