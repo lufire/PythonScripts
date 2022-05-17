@@ -67,7 +67,7 @@ contact_angles = np.asarray([70.0, 130.0])
 contact_angle = contact_angles[1]
 # capillary pressure - saturation correlation model ('leverett', 'psd')
 # saturation_model = 'leverett'
-saturation_models = ['psd']
+saturation_models = ['leverett']
 
 # numerical discretization
 nz = 100

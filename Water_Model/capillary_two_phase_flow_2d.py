@@ -136,7 +136,7 @@ while i < iter_min or (i < iter_max and eps > error_tol):
 
     k_0 = k[0]
     # setup main diagonal
-    center_diag = np.zeros(nz - 1)
+    center_diag = np.zeros(ny * (nz - 1))
     center_diag[1:] += k_f[:-1]
     center_diag[:] += k_f
     # boundary conditions (0: Neumann, nz-1: Dirichlet)
@@ -145,10 +145,10 @@ while i < iter_min or (i < iter_max and eps > error_tol):
     center_diag *= -1
 
     # setup offset diagonals
-    lower_diag = np.zeros(nz - 2)
+    lower_diag = np.zeros(ny * (nz - 2))
     lower_diag[:] = k_f[:-1]
 
-    upper_diag = np.zeros(nz - 2)
+    upper_diag = np.zeros(ny * (nz - 2))
     upper_diag[:] = k_f[:-1]
     upper_diag[0] += k[0]
 
@@ -160,7 +160,7 @@ while i < iter_min or (i < iter_max and eps > error_tol):
         A_matrix = sparse.csr_matrix(A_matrix)
 
     # setup right hand side
-    rhs = np.zeros(nz-1)
+    rhs = np.zeros(ny * (nz-1))
     rhs[:] = - source
     rhs[0] += - water_flux * 2.0 / dz
     rhs[-1] += - k_f[-1] * p_liquid[-1] / dz ** 2.0
