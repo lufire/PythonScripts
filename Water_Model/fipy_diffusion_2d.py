@@ -17,6 +17,9 @@ import saturation as sat
 current_density = 20000.0
 temp = 343.15
 
+# saturation at channel gdl interace
+s_chl = 1e-3
+
 # parameters
 faraday = 96485.3329
 rho_water = 977.8
@@ -34,6 +37,10 @@ contact_angles = np.asarray([70.0, 130.0])
 contact_angle = contact_angles[1]
 saturation_model = 'leverett'
 
+# collect parameters in lists for each model
+params_leverett = \
+    [sigma_water, contact_angle, porosity, permeability_abs]
+params_psd = None
 
 # numerical discretization
 nx = 20
@@ -46,9 +53,19 @@ L = dx * nx
 W = dy * ny
 mesh = Grid2D(dx=dx, dy=dy, nx=nx, ny=ny)
 
+# select parameter set according to saturation model
+if saturation_model == 'leverett':
+    params = params_leverett
+elif saturation_model == 'psd':
+    params = params_psd
+else:
+    raise NotImplementedError
+
+# constant factor for saturation "diffusion" coefficient
+D_const = rho_water / mu_water * permeability_abs
+
 # We create a :class:`~fipy.variables.cellVariable.CellVariable` and
 # initialize it to zero:
-
 phi = CellVariable(name="Liquid pressure",
                    mesh=mesh,
                    value=1.,
@@ -57,30 +74,16 @@ phi = CellVariable(name="Liquid pressure",
 
 # and then create a diffusion equation.  This is solved by default with an
 # iterative conjugate gradient solver.
-params_leverett = \
-    [sigma_water, contact_angle, porosity, permeability_abs]
-params_psd = None
 
-# D = 1e-10
-D0 = 1.0
-D = CellVariable(name='saturation',
-                 mesh=mesh,
-                 value=sat.get_saturation(phi, params_psd, params_leverett,
-                                          saturation_model),
-                 hasOld=True)
-# D = sat.get_saturation(phi, params_psd, params_leverett,
-#                        saturation_model)
-eq = DiffusionTerm(coeff=D)
+# initialize diffusion equation
+D = CellVariable(mesh=mesh, value=0.0)
+D_f = FaceVariable(mesh=mesh, value=0.0)
+eq = DiffusionTerm(coeff=D_f)
 
-# We apply Dirichlet boundary conditions
-
-valueTopRight = 0.0
-valueTopLeft = 1.0
-valueBottom = 1.0
-
-# to the top-left and bottom-right corners.  Neumann boundary conditions
-# are automatically applied to the top-right and bottom-left corners.
-
+# set boundary conditions
+# top: fixed Dirichlet condition (fixed liquid pressure according to saturation
+# boundary condition)
+# bottom: Neumann flux condition (according to reaction water flux)
 X, Y = mesh.faceCenters
 # facesTopLeft = ((mesh.facesLeft & (Y > L / 2))
 #                 | (mesh.facesTop & (X < L / 2)))
@@ -91,9 +94,10 @@ X, Y = mesh.faceCenters
 # facesTopRight = (mesh.facesTop & (X >= L / 2.0))
 facesTop = mesh.facesTop
 facesBottom = mesh.facesBottom
-phi.constrain(valueTopRight, facesTop)
+phi_top = sat.get_capillary_pressure(s_chl, params, saturation_model)
+phi.constrain(phi_top, facesTop)
 # phi.constrain(valueTopRight, facesTopRight)
-phi.constrain(valueBottom, facesBottom)
+phi.constrain(0.15, facesBottom)
 
 # We can solve the steady-state problem
 iter_max = 1000
@@ -102,7 +106,16 @@ residual = np.inf
 error_tol = 1e-7
 i = 0
 while i < iter_min or (i < iter_max and residual > error_tol):
-    D = D0 * (1-phi)
+    # D = D0 * (1-phi)
+    # D = CellVariable(name='saturation',
+    #                  mesh=mesh,
+    #                  value=sat.get_saturation(phi, params_psd, params_leverett,
+    #                                           saturation_model))
+    saturation = sat.get_saturation(phi, params, saturation_model)
+
+    D.setValue(sat.get_saturation(phi, params, saturation_model))
+    D_f.setValue(D.harmonicFaceValue())
+    # D.setValue(sat.get_saturation(phi, params_leverett, saturation_model))
     residual = eq.sweep(var=phi)
     i += 1
 

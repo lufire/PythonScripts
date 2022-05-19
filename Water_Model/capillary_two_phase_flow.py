@@ -117,10 +117,13 @@ for F_HI in F_HI_list:
     for saturation_model in saturation_models:
         for j in range(len(current_density)):
 
-            params_psd = [sigma_water, contact_angles, F, f_k, r_k, s_k]
-            params_leverett = \
-                [sigma_water, contact_angle, porosity, permeability_abs, s]
-
+            if saturation_model == 'leverett':
+                params = \
+                    [sigma_water, contact_angle, porosity, permeability_abs]
+            elif saturation_model == 'psd':
+                params = [sigma_water, contact_angles, F, f_k, r_k, s_k]
+            else:
+                raise NotImplementedError
             water_flux = current_density[j] / (2.0 * faraday) * mm_water
             # s = np.copy(s_0)
             iter_max = 1000
@@ -131,20 +134,14 @@ for F_HI in F_HI_list:
             s_chl = s[-1]
             while i < iter_min or (i < iter_max and eps > error_tol):
 
+                # set gas pressure
                 p_gas[:] = p_chl
 
-                if saturation_model == 'leverett':
-                    p_liquid_chl = \
-                        sat.leverett_p_s(s_chl, sigma_water, contact_angle,
-                                         porosity, permeability_abs) + p_chl
-                elif saturation_model == 'psd':
-                    p_liquid_chl = \
-                        sat.get_capillary_pressure_psd(
-                            s_chl, params_psd) + p_chl
+                # set boundary liquid pressure
+                p_liquid_chl = \
+                    sat.get_capillary_pressure(
+                        s_chl, params, saturation_model) + p_chl
 
-                            # capillary_pressure_prev=p_c[-1]) \
-                else:
-                    raise NotImplementedError
                 p_liquid[-1] = p_liquid_chl
 
                 # k_bc = 1e-6
@@ -202,8 +199,7 @@ for F_HI in F_HI_list:
                 s_old = np.copy(s)
 
                 s_new = \
-                    sat.get_saturation(p_c, params_psd, params_leverett,
-                                       saturation_model)
+                    sat.get_saturation(p_c, params, saturation_model, s_old)
                 s = urf * s_new + (1.0 - urf) * s_old
                 s_diff = s - s_old
                 p_diff = p_c - p_c_old

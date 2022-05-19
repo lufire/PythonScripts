@@ -140,17 +140,18 @@ def get_saturation_psd(capillary_pressure, params):
                                contact_angles, F, f, r, s)
 
 
-def get_saturation(capillary_pressure, params_psd, params_leverett, model_type):
+def get_saturation(capillary_pressure, params, model_type,
+                   saturation_prev=None):
     if model_type == 'psd':
-        return get_saturation_psd(capillary_pressure, params_psd)
+        return get_saturation_psd(capillary_pressure, params)
     elif model_type == 'leverett':
-        return get_saturation_leverett(capillary_pressure, params_leverett)
+        params.append(saturation_prev)
+        return get_saturation_leverett(capillary_pressure, params)
     else:
         raise NotImplementedError()
 
 
-def get_capillary_pressure_psd(saturation, params,
-                               capillary_pressure_prev=None):
+def get_capillary_pressure_psd(saturation, params):
     try:
         surface_tension = params[0]
         contact_angles = params[1]
@@ -162,6 +163,10 @@ def get_capillary_pressure_psd(saturation, params,
         raise IndexError('params input list not complete, must include: '
                          'surface_tension:float, contact_angle:list, F:list,'
                          'f:list, r:list, s:list')
+    try:
+        capillary_pressure_prev = params[6]
+    except IndexError:
+        capillary_pressure_prev = None
 
     def root_saturation_psd(capillary_pressure):
         return saturation - \
@@ -172,6 +177,32 @@ def get_capillary_pressure_psd(saturation, params,
     else:
         p_c_in = np.ones(np.asarray(saturation).shape)
     return optimize.root(root_saturation_psd, p_c_in).x
+
+
+def get_capillary_pressure_leverett(saturation, params):
+    try:
+        surface_tension = params[0]
+        contact_angle = params[1]
+        porosity = params[2]
+        permeability = params[3]
+    except IndexError:
+        raise IndexError('params input list not complete, must include: '
+                         'surface_tension:float, contact_angle:float, '
+                         'porosity:float, permeability:float')
+
+    return leverett_p_s(saturation, surface_tension, contact_angle,
+                        porosity, permeability)
+
+
+def get_capillary_pressure(saturation, params, model_type,
+                           capillary_pressure_prev=None):
+    if model_type == 'psd':
+        params.append(capillary_pressure_prev)
+        return get_capillary_pressure_psd(saturation, params)
+    elif model_type == 'leverett':
+        return get_capillary_pressure_leverett(saturation, params)
+    else:
+        raise NotImplementedError()
 
 
 if __name__ == "__main__":
