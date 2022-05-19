@@ -6,11 +6,14 @@
 # .. index::
 #    single: Grid2D
 import numpy as np
+from matplotlib import pyplot as plt
 from fipy import CellVariable, FaceVariable, Grid2D, Viewer, TransientTerm, \
     DiffusionTerm
 from fipy.tools import numerix
 from fipy import input
 import saturation as sat
+import matplotlib
+matplotlib.use('TkAgg')
 
 # physical boundary conditions and parameters
 # operating conditions
@@ -20,6 +23,9 @@ temp = 343.15
 # saturation at channel gdl interace
 s_chl = 1e-3
 
+# gas pressure
+p_gas = 101325.0
+
 # parameters
 faraday = 96485.3329
 rho_water = 977.8
@@ -27,8 +33,11 @@ mu_water = 0.4035e-3
 mm_water = 0.018
 sigma_water = 0.07275 * (1.0 - 0.002 * (temp - 291.0))
 
+# water flux due to current density
+water_flux = current_density / (2.0 * faraday) * mm_water
+
 # parameters for SGL 34BA (5% PTFE)
-thickness = 2e-3 # 260e-6
+thickness = 260e-6
 width = 2e-3
 porosity = 0.74
 permeability_abs = 1.88e-11
@@ -43,7 +52,7 @@ params_leverett = \
 params_psd = None
 
 # numerical discretization
-nx = 20
+nx = 1
 ny = 20
 
 dx = width / nx
@@ -66,20 +75,19 @@ D_const = rho_water / mu_water * permeability_abs
 
 # We create a :class:`~fipy.variables.cellVariable.CellVariable` and
 # initialize it to zero:
-phi = CellVariable(name="Liquid pressure",
-                   mesh=mesh,
-                   value=1.,
-                   hasOld=True)
+p_liq = CellVariable(name="Liquid pressure",
+                     mesh=mesh,
+                     value=p_gas,
+                     hasOld=True)
 
 
 # and then create a diffusion equation.  This is solved by default with an
 # iterative conjugate gradient solver.
 
-# initialize diffusion equation
+# initialize mesh variables
 D = CellVariable(mesh=mesh, value=0.0)
-D_f = FaceVariable(mesh=mesh, value=0.0)
-eq = DiffusionTerm(coeff=D_f)
-
+D_f = FaceVariable(mesh=mesh, value=D.arithmeticFaceValue())
+S = CellVariable(mesh=mesh, value=0.0, hasOld=True)
 # set boundary conditions
 # top: fixed Dirichlet condition (fixed liquid pressure according to saturation
 # boundary condition)
@@ -94,36 +102,57 @@ X, Y = mesh.faceCenters
 # facesTopRight = (mesh.facesTop & (X >= L / 2.0))
 facesTop = mesh.facesTop
 facesBottom = mesh.facesBottom
-phi_top = sat.get_capillary_pressure(s_chl, params, saturation_model)
-phi.constrain(phi_top, facesTop)
+p_capillary_top = sat.get_capillary_pressure(s_chl, params, saturation_model)
+p_liquid_top = p_capillary_top + p_gas
+p_liq.setValue(p_liquid_top)
+p_liq.constrain(p_liquid_top, facesTop)
 # phi.constrain(valueTopRight, facesTopRight)
-phi.constrain(0.15, facesBottom)
+# p_liq_bot = p_liquid_top + 200.0
+# p_liq.constrain(p_liq_bot, facesBottom)
+# p_liq.faceGrad.constrain(water_flux, facesBottom)
+D.constrain(0.0, facesBottom)
+
+# setup diffusion equation
+eq = DiffusionTerm(coeff=D_f) - (facesBottom * water_flux).divergence
 
 # We can solve the steady-state problem
 iter_max = 1000
 iter_min = 10
-residual = np.inf
 error_tol = 1e-7
-i = 0
-while i < iter_min or (i < iter_max and residual > error_tol):
-    # D = D0 * (1-phi)
-    # D = CellVariable(name='saturation',
-    #                  mesh=mesh,
-    #                  value=sat.get_saturation(phi, params_psd, params_leverett,
-    #                                           saturation_model))
-    saturation = sat.get_saturation(phi, params, saturation_model)
-
-    D.setValue(sat.get_saturation(phi, params, saturation_model))
-    D_f.setValue(D.harmonicFaceValue())
-    # D.setValue(sat.get_saturation(phi, params_leverett, saturation_model))
-    residual = eq.sweep(var=phi)
-    i += 1
+urf = 0.8
+urfs = [0.9]
+residuals = [[] for i in range(len(urfs))]
+for i in range(len(urfs)):
+    residual = np.inf
+    iter = 0
+    while iter < iter_min or (iter < iter_max and residual > error_tol):
+        # D = D0 * (1-phi)
+        # D = CellVariable(name='saturation',
+        #                  mesh=mesh,
+        #                  value=sat.get_saturation(phi, params_psd, params_leverett,
+        #                                           saturation_model))
+        p_cap = p_liq - p_gas
+        saturation = sat.get_saturation(p_cap, params, saturation_model)
+        S.setValue(saturation)
+        D.setValue(D_const * sat.k_s(S))
+        D_f.setValue(D.arithmeticFaceValue())
+        # p_liq.faceGrad.constrain(water_flux, facesBottom)
+        residual = eq.sweep(var=p_liq, underRelaxation=urfs[i])
+        iter += 1
+        residuals[i].append(residual)
 
 if __name__ == '__main__':
-    viewer = Viewer(vars=phi, datamin=0., datamax=1.)
+    viewer = Viewer(vars=S) #, datamin=0., datamax=1.)
     viewer.plot()
     input("Implicit steady-state diffusion. Press <return> to proceed...")
 
+    fig, ax = plt.subplots()
+    # for i in range(len(urfs)):
+    #     ax.plot(list(range(len(residuals[i]))), residuals[i],
+    #             label='urf = ' + str(urfs[i]))
+    # ax.set_yscale('log')
+    # plt.legend()
+    # plt.show()
 # .. image:: mesh20x20steadyState.*
 #    :width: 90%
 #    :align: center
