@@ -6,7 +6,8 @@
 # .. index::
 #    single: Grid2D
 import numpy as np
-from fipy import CellVariable, Grid2D, Viewer, TransientTerm, DiffusionTerm
+from fipy import CellVariable, FaceVariable, Grid2D, Viewer, TransientTerm, \
+    DiffusionTerm
 from fipy.tools import numerix
 from fipy import input
 import saturation as sat
@@ -24,14 +25,18 @@ mm_water = 0.018
 sigma_water = 0.07275 * (1.0 - 0.002 * (temp - 291.0))
 
 # parameters for SGL 34BA (5% PTFE)
-thickness = 260e-6
+thickness = 2e-3 # 260e-6
 width = 2e-3
 porosity = 0.74
 permeability_abs = 1.88e-11
 
-# numerical discretization
+contact_angles = np.asarray([70.0, 130.0])
+contact_angle = contact_angles[1]
+saturation_model = 'leverett'
 
-nx = 200
+
+# numerical discretization
+nx = 20
 ny = 20
 
 dx = width / nx
@@ -46,13 +51,25 @@ mesh = Grid2D(dx=dx, dy=dy, nx=nx, ny=ny)
 
 phi = CellVariable(name="Liquid pressure",
                    mesh=mesh,
-                   value=0.,
+                   value=1.,
                    hasOld=True)
+
 
 # and then create a diffusion equation.  This is solved by default with an
 # iterative conjugate gradient solver.
+params_leverett = \
+    [sigma_water, contact_angle, porosity, permeability_abs]
+params_psd = None
 
-D = 1.
+# D = 1e-10
+D0 = 1.0
+D = CellVariable(name='saturation',
+                 mesh=mesh,
+                 value=sat.get_saturation(phi, params_psd, params_leverett,
+                                          saturation_model),
+                 hasOld=True)
+# D = sat.get_saturation(phi, params_psd, params_leverett,
+#                        saturation_model)
 eq = DiffusionTerm(coeff=D)
 
 # We apply Dirichlet boundary conditions
@@ -70,11 +87,12 @@ X, Y = mesh.faceCenters
 # facesBottomRight = ((mesh.facesRight & (Y < L / 2))
 #                     | (mesh.facesBottom & (X > L / 2)))
 
-facesTopLeft = (mesh.facesTop & (X < L / 2.0))
-facesTopRight = (mesh.facesTop & (X >= L / 2.0))
+# facesTopLeft = (mesh.facesTop & (X < L / 2.0))
+# facesTopRight = (mesh.facesTop & (X >= L / 2.0))
+facesTop = mesh.facesTop
 facesBottom = mesh.facesBottom
-phi.constrain(valueTopLeft, facesTopLeft)
-phi.constrain(valueTopRight, facesTopRight)
+phi.constrain(valueTopRight, facesTop)
+# phi.constrain(valueTopRight, facesTopRight)
 phi.constrain(valueBottom, facesBottom)
 
 # We can solve the steady-state problem
@@ -84,6 +102,7 @@ residual = np.inf
 error_tol = 1e-7
 i = 0
 while i < iter_min or (i < iter_max and residual > error_tol):
+    D = D0 * (1-phi)
     residual = eq.sweep(var=phi)
     i += 1
 
@@ -101,4 +120,4 @@ if __name__ == '__main__':
 # and test the value of the bottom-right corner cell.
 #
 
-print(numerix.allclose(phi(((L,), (0,))), valueBottom, atol=1e-2))
+# print(numerix.allclose(phi(((L,), (0,))), valueBottom, atol=1e-2))
