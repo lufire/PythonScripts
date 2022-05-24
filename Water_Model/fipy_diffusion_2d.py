@@ -40,7 +40,14 @@ water_flux = current_density / (2.0 * faraday) * mm_water
 thickness = 260e-6
 width = 2e-3
 porosity = 0.74
-permeability_abs = 1e-13
+permeability_abs = 1e-12
+
+# psd specific parameters
+r_k = np.asarray([[14.20e-6, 34.00e-6], [14.20e-6, 34.00e-6]])
+F_HI = 0.08
+F = np.asarray([F_HI, 1.0 - F_HI])
+f_k = np.asarray([[0.28, 0.72], [0.28, 0.72]])
+s_k = np.asarray([[0.35, 1.0], [0.35, 1.0]])
 
 contact_angles = np.asarray([70.0, 130.0])
 contact_angle = contact_angles[1]
@@ -49,7 +56,7 @@ saturation_model = 'leverett'
 # Collect parameters in lists for each model
 params_leverett = \
     [sigma_water, contact_angle, porosity, permeability_abs]
-params_psd = None
+params_psd = [sigma_water, contact_angles, F, f_k, r_k, s_k]
 
 # Numerical resolution
 nx = 200
@@ -139,11 +146,26 @@ iter_min = 10
 error_tol = 1e-7
 urf = 0.5
 urfs = [0.5]
-saturation = np.ones(nx * ny) * s_chl
-s_old = np.copy(saturation)
+s_value = np.ones(nx * ny) * s_chl
+s_old = np.copy(s_value)
+p_cap = np.ones(s_value.shape) * 1000.0
+p_cap_old = np.copy(p_cap)
 residual = np.inf
+
 iter = 0
-while iter < iter_min or (iter < iter_max and residual > error_tol):
+
+residuals = []
+
+while True:
+
+    if iter > iter_min and residual <= error_tol:
+        print('Solution converged with {} steps and residual = {}'.format(
+            iter, residual))
+        break
+    if iter >= iter_max:
+        print('Solution did not converge within {} steps and residual = {}'
+              ''.format(iter, residual))
+        break
 
     # update diffusion values with previous saturation values
     D.setValue(D_const * sat.k_s(s))
@@ -154,15 +176,25 @@ while iter < iter_min or (iter < iter_max and residual > error_tol):
     # solve liquid pressure transport equation
     residual = eq.sweep(var=p_liq) #, underRelaxation=urfs[i])
 
+    p_cap_old = np.copy(p_cap)
     # calculate capillary pressure
-    p_cap = p_liq - p_gas
+    p_cap[:] = p_liq.value - p_gas
 
     # calculate new saturation values
     s_old = np.copy(s.value)
     s_new = sat.get_saturation(p_cap, params, saturation_model)
-    s.setValue(urf * s_new + (1.0 - urf) * s_old)
+    s_value = urf * s_new + (1.0 - urf) * s_old
+    s.setValue(s_value)
 
+    s_diff = (s_value - s_old) / s_value
+    p_diff = (p_cap - p_cap_old) / p_cap
+    eps_s = np.dot(s_diff.transpose(), s_diff) / (2.0 * len(s_diff))
+    eps_p = np.dot(p_diff.transpose(), p_diff) / (2.0 * len(p_diff))
+
+    eps = eps_s + eps_p
+    residual += eps
     # update iteration counter
+    residuals.append(residual)
     iter += 1
 
 if __name__ == '__main__':
@@ -170,12 +202,14 @@ if __name__ == '__main__':
     viewer.plot()
     input("Implicit steady-state diffusion. Press <return> to proceed...")
     fig, ax = plt.subplots()
+    ax.plot(np.asarray(list(range(len(residuals)))), np.asarray(residuals))
+
     # for i in range(len(urfs)):
     #     ax.plot(list(range(len(residuals[i]))), residuals[i],
     #             label='urf = ' + str(urfs[i]))
-    # ax.set_yscale('log')
+    ax.set_yscale('log')
     # plt.legend()
-    # plt.show()
+    plt.show()
 # .. image:: mesh20x20steadyState.*
 #    :width: 90%
 #    :align: center
