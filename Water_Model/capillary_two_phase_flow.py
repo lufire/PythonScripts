@@ -70,7 +70,7 @@ contact_angle = contact_angles[1]
 saturation_models = ['leverett']
 
 # numerical discretization
-nz = 20
+nz = 100
 z = np.linspace(0, thickness, nz, endpoint=True)
 dz = thickness / nz
 

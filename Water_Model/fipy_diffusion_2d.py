@@ -21,7 +21,7 @@ current_density = 20000.0
 temp = 343.15
 
 # saturation at channel gdl interace
-s_chl = 1e-3
+s_chl = 0.2
 
 # gas pressure
 p_gas = 101325.0
@@ -52,7 +52,7 @@ params_leverett = \
 params_psd = None
 
 # numerical discretization
-nx = 1
+nx = 200
 ny = 20
 
 dx = width / nx
@@ -99,14 +99,14 @@ X, Y = mesh.faceCenters
 #                     | (mesh.facesBottom & (X > L / 2)))
 
 # facesTopLeft = (mesh.facesTop & (X < L / 2.0))
-# facesTopRight = (mesh.facesTop & (X >= L / 2.0))
+facesTopRight = (mesh.facesTop & (X >= L / 2.0))
 facesTop = mesh.facesTop
 facesBottom = mesh.facesBottom
 p_capillary_top = sat.get_capillary_pressure(s_chl, params, saturation_model)
 p_liquid_top = p_capillary_top + p_gas
 p_liq.setValue(p_liquid_top)
-p_liq.constrain(p_liquid_top, facesTop)
-# phi.constrain(valueTopRight, facesTopRight)
+# p_liq.constrain(p_liquid_top, facesTop)
+p_liq.constrain(p_liquid_top, facesTopRight)
 # p_liq_bot = p_liquid_top + 200.0
 # p_liq.constrain(p_liq_bot, facesBottom)
 # p_liq.faceGrad.constrain(water_flux, facesBottom)
@@ -119,33 +119,34 @@ eq = DiffusionTerm(coeff=D_f) - (facesBottom * water_flux).divergence
 iter_max = 1000
 iter_min = 10
 error_tol = 1e-7
-urf = 0.8
-urfs = [0.9]
-residuals = [[] for i in range(len(urfs))]
-for i in range(len(urfs)):
-    residual = np.inf
-    iter = 0
-    while iter < iter_min or (iter < iter_max and residual > error_tol):
-        # D = D0 * (1-phi)
-        # D = CellVariable(name='saturation',
-        #                  mesh=mesh,
-        #                  value=sat.get_saturation(phi, params_psd, params_leverett,
-        #                                           saturation_model))
-        p_cap = p_liq - p_gas
-        saturation = sat.get_saturation(p_cap, params, saturation_model)
-        S.setValue(saturation)
-        D.setValue(D_const * sat.k_s(S))
-        D_f.setValue(D.arithmeticFaceValue())
-        # p_liq.faceGrad.constrain(water_flux, facesBottom)
-        residual = eq.sweep(var=p_liq, underRelaxation=urfs[i])
-        iter += 1
-        residuals[i].append(residual)
+urf = 0.5
+urfs = [0.5]
+saturation = np.ones(nx * ny) * s_chl
+saturation_old = np.copy(saturation)
+residual = np.inf
+iter = 0
+while iter < iter_min or (iter < iter_max and residual > error_tol):
+    # D = D0 * (1-phi)
+    # D = CellVariable(name='saturation',
+    #                  mesh=mesh,
+    #                  value=sat.get_saturation(phi, params_psd, params_leverett,
+    #                                           saturation_model))
+    D.setValue(D_const * sat.k_s(S))
+    D_f.setValue(D.arithmeticFaceValue())
+    # p_liq.faceGrad.constrain(water_flux, facesBottom)
+    residual = eq.sweep(var=p_liq) #, underRelaxation=urfs[i])
+    p_cap = p_liq - p_gas
+    saturation_old = np.copy(saturation)
+    saturation_new = sat.get_saturation(p_cap, params, saturation_model)
+    saturation = urf * saturation_new + (1.0 - urf) * saturation_old
+    S.setValue(saturation)
+
+    iter += 1
 
 if __name__ == '__main__':
     viewer = Viewer(vars=S) #, datamin=0., datamax=1.)
     viewer.plot()
     input("Implicit steady-state diffusion. Press <return> to proceed...")
-
     fig, ax = plt.subplots()
     # for i in range(len(urfs)):
     #     ax.plot(list(range(len(residuals[i]))), residuals[i],
