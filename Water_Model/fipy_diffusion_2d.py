@@ -15,43 +15,43 @@ import saturation as sat
 import matplotlib
 matplotlib.use('TkAgg')
 
-# physical boundary conditions and parameters
-# operating conditions
+# Physical boundary conditions and parameters
+# Operating conditions
 current_density = 20000.0
-temp = 343.15
+temp_init = 343.15
 
-# saturation at channel gdl interace
-s_chl = 0.2
+# Saturation at channel gdl interace
+s_chl = 0.001
 
-# gas pressure
+# Constant gas pressure
 p_gas = 101325.0
 
-# parameters
+# Physical parameters
 faraday = 96485.3329
 rho_water = 977.8
 mu_water = 0.4035e-3
 mm_water = 0.018
-sigma_water = 0.07275 * (1.0 - 0.002 * (temp - 291.0))
+sigma_water = 0.07275 * (1.0 - 0.002 * (temp_init - 291.0))
 
-# water flux due to current density
+# Water flux due to current density
 water_flux = current_density / (2.0 * faraday) * mm_water
 
-# parameters for SGL 34BA (5% PTFE)
+# Parameters for SGL 34BA (5% PTFE)
 thickness = 260e-6
 width = 2e-3
 porosity = 0.74
-permeability_abs = 1.88e-11
+permeability_abs = 1e-13
 
 contact_angles = np.asarray([70.0, 130.0])
 contact_angle = contact_angles[1]
 saturation_model = 'leverett'
 
-# collect parameters in lists for each model
+# Collect parameters in lists for each model
 params_leverett = \
     [sigma_water, contact_angle, porosity, permeability_abs]
 params_psd = None
 
-# numerical discretization
+# Numerical resolution
 nx = 200
 ny = 20
 
@@ -62,7 +62,7 @@ L = dx * nx
 W = dy * ny
 mesh = Grid2D(dx=dx, dy=dy, nx=nx, ny=ny)
 
-# select parameter set according to saturation model
+# Select parameter set according to saturation model
 if saturation_model == 'leverett':
     params = params_leverett
 elif saturation_model == 'psd':
@@ -70,25 +70,43 @@ elif saturation_model == 'psd':
 else:
     raise NotImplementedError
 
-# constant factor for saturation "diffusion" coefficient
+# Constant factor for saturation "diffusion" coefficient
 D_const = rho_water / mu_water * permeability_abs
 
-# We create a :class:`~fipy.variables.cellVariable.CellVariable` and
-# initialize it to zero:
+# Initialize mesh variables
+# Diffusion coefficients
+D = CellVariable(mesh=mesh, value=0.0)
+D_f = FaceVariable(mesh=mesh, value=D.arithmeticFaceValue())
+
+# Liquid pressure
 p_liq = CellVariable(name="Liquid pressure",
                      mesh=mesh,
                      value=p_gas,
                      hasOld=True)
 
+# Saturation
+s = CellVariable(mesh=mesh, value=0.0, hasOld=True)
 
-# and then create a diffusion equation.  This is solved by default with an
-# iterative conjugate gradient solver.
+# Temperature
+temp = CellVariable(mesh=mesh, value=293.15)
 
-# initialize mesh variables
-D = CellVariable(mesh=mesh, value=0.0)
-D_f = FaceVariable(mesh=mesh, value=D.arithmeticFaceValue())
-S = CellVariable(mesh=mesh, value=0.0, hasOld=True)
-# set boundary conditions
+# Species concentration, last species will not be solved for
+species_fractions = \
+    [{'name': 'O2', 'value': 0.21},
+     {'name': 'H2O', 'value': 0.0},
+     {'name': 'N2', 'value': 0.79}]
+
+x = [CellVariable(name='x_' + species_fractions[i]['name'],
+                  mesh=mesh,
+                  value=species_fractions[i]['value'])
+     for i, species in enumerate(species_fractions)]
+
+c = [CellVariable(name='c_' + species_fractions[i]['name'],
+                  mesh=mesh,
+                  value=species_fractions[i]['value'])
+     for i, species in enumerate(species_fractions)]
+
+# Set boundary conditions
 # top: fixed Dirichlet condition (fixed liquid pressure according to saturation
 # boundary condition)
 # bottom: Neumann flux condition (according to reaction water flux)
@@ -122,29 +140,33 @@ error_tol = 1e-7
 urf = 0.5
 urfs = [0.5]
 saturation = np.ones(nx * ny) * s_chl
-saturation_old = np.copy(saturation)
+s_old = np.copy(saturation)
 residual = np.inf
 iter = 0
 while iter < iter_min or (iter < iter_max and residual > error_tol):
-    # D = D0 * (1-phi)
-    # D = CellVariable(name='saturation',
-    #                  mesh=mesh,
-    #                  value=sat.get_saturation(phi, params_psd, params_leverett,
-    #                                           saturation_model))
-    D.setValue(D_const * sat.k_s(S))
-    D_f.setValue(D.arithmeticFaceValue())
-    # p_liq.faceGrad.constrain(water_flux, facesBottom)
-    residual = eq.sweep(var=p_liq) #, underRelaxation=urfs[i])
-    p_cap = p_liq - p_gas
-    saturation_old = np.copy(saturation)
-    saturation_new = sat.get_saturation(p_cap, params, saturation_model)
-    saturation = urf * saturation_new + (1.0 - urf) * saturation_old
-    S.setValue(saturation)
 
+    # update diffusion values with previous saturation values
+    D.setValue(D_const * sat.k_s(s))
+    D_f.setValue(D.arithmeticFaceValue())
+
+    # p_liq.faceGrad.constrain(water_flux, facesBottom)
+
+    # solve liquid pressure transport equation
+    residual = eq.sweep(var=p_liq) #, underRelaxation=urfs[i])
+
+    # calculate capillary pressure
+    p_cap = p_liq - p_gas
+
+    # calculate new saturation values
+    s_old = np.copy(s.value)
+    s_new = sat.get_saturation(p_cap, params, saturation_model)
+    s.setValue(urf * s_new + (1.0 - urf) * s_old)
+
+    # update iteration counter
     iter += 1
 
 if __name__ == '__main__':
-    viewer = Viewer(vars=S) #, datamin=0., datamax=1.)
+    viewer = Viewer(vars=s) #, datamin=0., datamax=1.)
     viewer.plot()
     input("Implicit steady-state diffusion. Press <return> to proceed...")
     fig, ax = plt.subplots()
