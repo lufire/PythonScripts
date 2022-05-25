@@ -40,7 +40,7 @@ water_flux = current_density / (2.0 * faraday) * mm_water
 thickness = 260e-6
 width = 2e-3
 porosity = 0.74
-permeability_abs = 1e-12
+permeability_abs = 1.88e-11
 
 # psd specific parameters
 r_k = np.asarray([[14.20e-6, 34.00e-6], [14.20e-6, 34.00e-6]])
@@ -192,7 +192,7 @@ while True:
     eps_p = np.dot(p_diff.transpose(), p_diff) / (2.0 * len(p_diff))
 
     eps = eps_s + eps_p
-    residual += eps
+    # residual += eps
     # update iteration counter
     residuals.append(residual)
     iter += 1
