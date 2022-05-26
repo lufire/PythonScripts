@@ -17,8 +17,9 @@ matplotlib.use('TkAgg')
 
 # Physical boundary conditions and parameters
 # Operating conditions
-current_density = 20000.0
-temp_init = 343.15
+current_density = 30000.0
+temp_bc = 343.15
+operating_voltage = 0.5
 
 # Saturation at channel gdl interace
 s_chl = 0.001
@@ -27,20 +28,27 @@ s_chl = 0.001
 p_gas = 101325.0
 
 # Physical parameters
+thermo_neutral_voltage = 1.482
 faraday = 96485.3329
 rho_water = 977.8
 mu_water = 0.4035e-3
 mm_water = 0.018
-sigma_water = 0.07275 * (1.0 - 0.002 * (temp_init - 291.0))
+sigma_water = 0.07275 * (1.0 - 0.002 * (temp_bc - 291.0))
 
 # Water flux due to current density
 water_flux = current_density / (2.0 * faraday) * mm_water
+
+# Heat flux due to current density
+cathode_heat_flux_fraction = 0.7
+heat_flux = (thermo_neutral_voltage - operating_voltage) * current_density \
+            * cathode_heat_flux_fraction
 
 # Parameters for SGL 34BA (5% PTFE)
 thickness = 260e-6
 width = 2e-3
 porosity = 0.74
 permeability_abs = 1.88e-11
+thermal_conductivity = np.asarray([28.4, 2.8]) * porosity
 
 # psd specific parameters
 r_k = np.asarray([[14.20e-6, 34.00e-6], [14.20e-6, 34.00e-6]])
@@ -59,8 +67,8 @@ params_leverett = \
 params_psd = [sigma_water, contact_angles, F, f_k, r_k, s_k]
 
 # Numerical resolution
-nx = 200
-ny = 20
+nx = 100
+ny = 10
 
 dx = width / nx
 dy = thickness / ny
@@ -68,6 +76,7 @@ dy = thickness / ny
 L = dx * nx
 W = dy * ny
 mesh = Grid2D(dx=dx, dy=dy, nx=nx, ny=ny)
+X, Y = mesh.faceCenters
 
 # Select parameter set according to saturation model
 if saturation_model == 'leverett':
@@ -78,12 +87,19 @@ else:
     raise NotImplementedError
 
 # Constant factor for saturation "diffusion" coefficient
-D_const = rho_water / mu_water * permeability_abs
+D_s_const = rho_water / mu_water * permeability_abs
 
 # Initialize mesh variables
-# Diffusion coefficients
-D = CellVariable(mesh=mesh, value=0.0)
-D_f = FaceVariable(mesh=mesh, value=D.arithmeticFaceValue())
+# Saturation diffusion coefficient
+D_s = CellVariable(mesh=mesh, value=D_s_const)
+D_s_f = FaceVariable(mesh=mesh, value=D_s.arithmeticFaceValue())
+
+D_c = CellVariable(mesh=mesh, value=[[X**2 * 1000, 0],
+                                     [0, -Y**2 * 1000]])
+
+K_th = CellVariable(mesh=mesh, value=thermal_conductivity)
+
+# D_c = CellVariable(mesh=mesh, value=0.0)
 
 # Liquid pressure
 p_liq = CellVariable(name="Liquid pressure",
@@ -95,7 +111,7 @@ p_liq = CellVariable(name="Liquid pressure",
 s = CellVariable(mesh=mesh, value=0.0, hasOld=True)
 
 # Temperature
-temp = CellVariable(mesh=mesh, value=293.15)
+temp = CellVariable(mesh=mesh, value=temp_bc)
 
 # Species concentration, last species will not be solved for
 species_fractions = \
@@ -117,16 +133,17 @@ c = [CellVariable(name='c_' + species_fractions[i]['name'],
 # top: fixed Dirichlet condition (fixed liquid pressure according to saturation
 # boundary condition)
 # bottom: Neumann flux condition (according to reaction water flux)
-X, Y = mesh.faceCenters
 # facesTopLeft = ((mesh.facesLeft & (Y > L / 2))
 #                 | (mesh.facesTop & (X < L / 2)))
 # facesBottomRight = ((mesh.facesRight & (Y < L / 2))
 #                     | (mesh.facesBottom & (X > L / 2)))
-
-# facesTopLeft = (mesh.facesTop & (X < L / 2.0))
+# Specify boundary patches
+facesTopLeft = (mesh.facesTop & (X < L / 2.0))
 facesTopRight = (mesh.facesTop & (X >= L / 2.0))
 facesTop = mesh.facesTop
 facesBottom = mesh.facesBottom
+
+# Boundary conditions for liquid pressure
 p_capillary_top = sat.get_capillary_pressure(s_chl, params, saturation_model)
 p_liquid_top = p_capillary_top + p_gas
 p_liq.setValue(p_liquid_top)
@@ -135,10 +152,18 @@ p_liq.constrain(p_liquid_top, facesTopRight)
 # p_liq_bot = p_liquid_top + 200.0
 # p_liq.constrain(p_liq_bot, facesBottom)
 # p_liq.faceGrad.constrain(water_flux, facesBottom)
-D.constrain(0.0, facesBottom)
+D_s.constrain(0.0, facesBottom)
 
-# setup diffusion equation
-eq = DiffusionTerm(coeff=D_f) - (facesBottom * water_flux).divergence
+# Setup saturation diffusion equation
+eq_s = DiffusionTerm(coeff=D_s_f) - (facesBottom * water_flux).divergence
+
+# Boundary conditions for temperature
+temp.constrain(temp_bc, facesTopLeft)
+K_th.constrain(0.0, facesBottom)
+
+# Setup saturation diffusion equation
+eq_t = DiffusionTerm(K_th) \
+       - (facesBottom * heat_flux).divergence
 
 # We can solve the steady-state problem
 iter_max = 1000
@@ -157,7 +182,6 @@ iter = 0
 residuals = []
 
 while True:
-
     if iter > iter_min and residual <= error_tol:
         print('Solution converged with {} steps and residual = {}'.format(
             iter, residual))
@@ -168,13 +192,14 @@ while True:
         break
 
     # update diffusion values with previous saturation values
-    D.setValue(D_const * sat.k_s(s))
-    D_f.setValue(D.arithmeticFaceValue())
+    D_s.setValue(D_s_const * sat.k_s(s))
+    D_s_f.setValue(D_s.arithmeticFaceValue())
 
     # p_liq.faceGrad.constrain(water_flux, facesBottom)
 
     # solve liquid pressure transport equation
-    residual = eq.sweep(var=p_liq) #, underRelaxation=urfs[i])
+    residual_s = eq_s.sweep(var=p_liq) #, underRelaxation=urfs[i])
+    residual_t = eq_t.sweep(var=temp)
 
     p_cap_old = np.copy(p_cap)
     # calculate capillary pressure
@@ -192,7 +217,7 @@ while True:
     eps_p = np.dot(p_diff.transpose(), p_diff) / (2.0 * len(p_diff))
 
     eps = eps_s + eps_p
-    # residual += eps
+    residual = residual_t + residual_s  # + eps
     # update iteration counter
     residuals.append(residual)
     iter += 1
@@ -200,7 +225,12 @@ while True:
 if __name__ == '__main__':
     viewer = Viewer(vars=s) #, datamin=0., datamax=1.)
     viewer.plot()
-    input("Implicit steady-state diffusion. Press <return> to proceed...")
+    input("Saturation. Press <return> to proceed...")
+
+    viewer = Viewer(vars=temp) #, datamin=0., datamax=1.)
+    viewer.plot()
+    input("Temperature. Press <return> to proceed...")
+
     fig, ax = plt.subplots()
     ax.plot(np.asarray(list(range(len(residuals)))), np.asarray(residuals))
 
@@ -210,6 +240,7 @@ if __name__ == '__main__':
     ax.set_yscale('log')
     # plt.legend()
     plt.show()
+
 # .. image:: mesh20x20steadyState.*
 #    :width: 90%
 #    :align: center
