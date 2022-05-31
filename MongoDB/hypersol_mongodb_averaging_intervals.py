@@ -69,7 +69,7 @@ sample_name_re = re.compile(sample_name, re.I)
 # find entry in database collection
 raw_db_entries = raw_collection.find()
 
-averaged_collection = db['Averaged_2']
+averaged_collection = db['Averaged']
 
 # %%
 
@@ -103,7 +103,7 @@ for db_entry in raw_db_entries:
         # In[149]:
         inlet_composition_key = 'Gas Molar Composition (-)'
         headers = ['Species', 'Molar Fraction (-)']
-        headers = ['<b>' + header + '</b>'  for header in headers]
+        headers = ['<b>' + header + '</b>' for header in headers]
         inlet_composition = db_entry[inlet_composition_key]
         
         fig = go.Figure(data=[go.Table(
@@ -120,7 +120,7 @@ for db_entry in raw_db_entries:
                        align=['left', 'right']), columnwidth=[0.3, 0.7])])
         fig.update_layout(width=300, height=240, 
                           margin=dict(l=20, r=20, t=20, b=20))
-        fig.show()
+        # fig.show()
         file_name = 'Inlet_Composition.png'
         fig.write_image(os.path.join(directory, file_name), scale=2)
         # pio.write_image(fig, os.path.join(directory, file_name), width=400, height=240, scale=2)
@@ -128,7 +128,7 @@ for db_entry in raw_db_entries:
         # In[150]:
         liquid_composition_key = 'Liquid Molar Composition (-)'
         headers = ['Species', 'Molar Fraction (-)']
-        headers = ['<b>' + header + '</b>'  for header in headers]
+        headers = ['<b>' + header + '</b>' for header in headers]
         if liquid_composition_key in db_entry:
             liquid_composition = db_entry[liquid_composition_key]
         
@@ -146,7 +146,7 @@ for db_entry in raw_db_entries:
                            align=['left', 'right']), columnwidth=[0.3, 0.7])])
             fig.update_layout(width=300, height=240, 
                               margin=dict(l=20, r=20, t=20, b=20))
-            fig.show()
+            # fig.show()
             file_name = 'Liquid_Composition.png'
             fig.write_image(os.path.join(directory, file_name), scale=2)
         
@@ -183,8 +183,9 @@ for db_entry in raw_db_entries:
         
         fig.update_layout(width=400, height=300, 
                           margin=dict(l=20, r=20, t=20, b=20))
-        fig.for_each_trace(lambda t: t.update(header_fill_color = 'rgba(0,0,0,0)'))
-        fig.show()
+        fig.for_each_trace(
+            lambda t: t.update(header_fill_color='rgba(0,0,0,0)'))
+        # fig.show()
         file_name = 'General_Information.png'
         fig.write_image(os.path.join(directory, file_name), scale=2)
         
@@ -193,7 +194,8 @@ for db_entry in raw_db_entries:
         # get data array from database entry
         source_data = db_entry['Data']
         data = {}
-        data['y_keys'] = [k for k in source_data.keys() if k[0] in (str(i) for i in range(10))]
+        data['y_keys'] = [k for k in source_data.keys() if k[0]
+                          in (str(i) for i in range(10))]
         data['y'] = np.asarray([source_data[key] for key in data['y_keys']])
         
         # get x-values and make size the array equal to y-values array
@@ -213,34 +215,42 @@ for db_entry in raw_db_entries:
         # read amu species correspondence data
         with open(ms_calibration_data_file, 'r') as fp:
             ms_calibration_data_json = json.load(fp)
-        amu_species_dict = OrderedDict(zip(ms_calibration_data_json['amu'], ms_calibration_data_json['species']))
+        amu_species_dict = OrderedDict(zip(ms_calibration_data_json['amu'],
+                                           ms_calibration_data_json['species']))
         
         # filter functions
         def filter_species(name_list=None, amu_list=None):
             filtered_amu_species_dict = copy.deepcopy(amu_species_dict)
             if name_list is not None:
-                filtered_amu_species_dict =             OrderedDict([(k, list(set(name_list).intersection(v))) 
-                                 for k, v in amu_species_dict.items() 
-                                 if len(list(set(name_list).intersection(v))) > 0])
+                filtered_amu_species_dict = \
+                    OrderedDict(
+                        [(k, list(set(name_list).intersection(v)))
+                         for k, v in amu_species_dict.items()
+                         if len(list(set(name_list).intersection(v))) > 0])
             if amu_list is not None:
-                filtered_amu_species_dict =             OrderedDict([(k, v) for k, v in filtered_amu_species_dict.items() 
+                filtered_amu_species_dict = \
+                    OrderedDict([(k, v) for k, v
+                                 in filtered_amu_species_dict.items()
                                  if k in amu_list])        
             return filtered_amu_species_dict
         
         def filter_data(input_data, name_list=None, amu_list=None):
             result_data = copy.deepcopy(input_data)
-            filtered_amu_species_dict = filter_species(name_list=name_list, amu_list=amu_list)
+            filtered_amu_species_dict = \
+                filter_species(name_list=name_list, amu_list=amu_list)
             filtered_amu_list = np.array(list(filtered_amu_species_dict.keys()))
             bins = input_data['bins']
             filtered_amu_ids = [bins.index(k) for k in bins 
                                 if k in list(filtered_amu_list)]
             result_data['amus'] = [bins[k] for k in filtered_amu_ids]
-            filtered_amu_species_dict = filter_species(amu_list=filtered_amu_list)
+            filtered_amu_species_dict = \
+                filter_species(amu_list=filtered_amu_list)
             result_data['y'] = input_data['y'][filtered_amu_ids]
             result_data['labels'] = [str(k) + ' - ' + '/'.join(v) 
                               for k, v in filtered_amu_species_dict.items()
                               if k in bins]
-            result_data['y_keys'] = list(np.asarray(input_data['y_keys'])[filtered_amu_ids])
+            result_data['y_keys'] = \
+                list(np.asarray(input_data['y_keys'])[filtered_amu_ids])
             return result_data
         
         
@@ -338,7 +348,7 @@ for db_entry in raw_db_entries:
         fig.legend(custom_data['amus'], fontsize=font_size-2, 
                    edgecolor='k', bbox_to_anchor=(1.01, 0.89))
         # plt.tight_layout()
-        plt.show()
+        # plt.show()
         # save figure
         file_name = 'Raw_Spectrum.png'
         fig.savefig(os.path.join(directory, file_name), bbox_inches='tight')
@@ -370,17 +380,18 @@ for db_entry in raw_db_entries:
         t_end = np.asarray([t_end_no_radiation, t_end_radiation])
         t_start = (t_end - dt)
         intervals = np.vstack([t_start, t_end]).transpose()
-        intervals
         df = pd.DataFrame.from_dict(source_data)
         dfs = []
         for i in range(len(intervals)):
-            df_interval = df[df['Time Relative (sec)'].between(intervals[i, 0], intervals[i, 1])]
+            df_interval = df[df['Time Relative (sec)'].between(intervals[i, 0],
+                                                               intervals[i, 1])]
             dfs.append(df_interval.mean())
             # print(df_interval.mean())
         df_mean = pd.concat(dfs, axis=1).transpose()
         filtered_amu_list_str = [str(i) for i in filtered_data['amus']]
         columns_dict = dict(zip(filtered_data['y_keys'], filtered_amu_list_str))
-        df_mean = df_mean.rename(columns=columns_dict, index={0: 'Radiation off', 1: 'Radiation on'})
+        df_mean = df_mean.rename(columns=columns_dict,
+                                 index={0: 'Radiation off', 1: 'Radiation on'})
 
         # In[157]:
         # plot mean signals
@@ -390,12 +401,14 @@ for db_entry in raw_db_entries:
         # plt.tight_layout()
         # plt.rcParams.update({'font.size': font_size})
         custom_amu_list_str = [str(i) for i in custom_data['amus']]
-        df_mean[custom_amu_list_str].transpose().plot(kind='bar', ax=ax, figsize=(10, 8), logy=True)
+        df_mean[custom_amu_list_str].transpose().plot(kind='bar', ax=ax,
+                                                      figsize=(10, 8),
+                                                      logy=True)
         ax.set_xlabel('m/z', fontsize=18)
         ax.set_ylabel('Signal', fontsize=18)
         ax.tick_params(axis='both', which='major', labelsize=16)
         ax.tick_params(axis='x', which='major', labelrotation=0)
-        plt.show()
+        # plt.show()
 
         # In[158]:
         # save figure

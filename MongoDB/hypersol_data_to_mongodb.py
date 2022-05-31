@@ -102,7 +102,7 @@ for data_path in file_paths_new:
         {line.split('\t')[0].strip(): line.split('\t')[1].strip() 
          for line in general_info}
     sample_name = data_name.split('Sample-')[-1]
-    org_path = general_info_dict['Run Path and Name']
+    # org_path = general_info_dict['Run Path and Name']
     org_dir_name = os.path.dirname(run_path)
     org_path = os.path.join(org_dir_name, data_name + '.isi')
     date_object = datetime.strptime(general_info_dict['Start Time'], 
@@ -140,7 +140,7 @@ for data_path in file_paths_new:
                             'Time': time, 'Relative Time (s)': rel_seconds})
     if annotations:
         annotations[0]['Text'] = annotations[0]['Text'].replace('0,6', '0.6')
-        annotations
+        # annotations
 
     # In[339]:
     # filter keys for even numbers (atom masses)
