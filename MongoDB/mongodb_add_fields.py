@@ -13,22 +13,25 @@ Created on Tue Feb  8 23:42:26 2022
 # import relevant libraries
 import re
 from pymongo import MongoClient
-import mongodb_credentials as mc
+from getpass import getpass
 
 # %%
+# Database authentication
+host_name = input('Provide database host name: ')
+user_name = input('Provide database user name: ')
+password = getpass('Provide database password: ')
 
 
-# initialize mongo connector object with ip adress
-client = MongoClient(mc.HOST_NAME)
+# initialize mongo connector object with ip address
+client = MongoClient(host_name)
 # get reference to existing database testDB
 db = client.HyperSol
 # authentication within database
-db.authenticate(mc.USER_NAME, mc.PASSWORD, source='xxx')
+db.authenticate(user_name, password, source='admin')
 # reference collection, if not existent it will be created
 current_collection = db['Averaged']
 
 # %%
-
 find_str = 'UVC'
 update_field = 'Lamp'
 

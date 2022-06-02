@@ -9,7 +9,7 @@ import re
 import pandas as pd
 from pymongo import MongoClient
 from datetime import datetime
-import mongodb_credentials as mc
+from getpass import getpass
 
 # In[2]:
 
@@ -36,14 +36,19 @@ print(file_paths)
 
 
 # In[3]:
+# Database authentication
+host_name = input('Provide database host name: ')
+user_name = input('Provide database user name: ')
+password = getpass('Provide database password: ')
 
 
 # initialize mongo connector object with ip adress
-client = MongoClient(mc.HOST_NAME)
+client = MongoClient(host_name)
 # get reference to existing database testDB
 db = client.HyperSol
 # authentication within database
-db.authenticate(mc.USER_NAME, mc.PASSWORD, source='admin')
+db.authenticate(user_name, password, source='admin')
+
 # reference collection, if not existent it will be created
 current_collection = db['Raw']
 
@@ -73,22 +78,16 @@ for file in file_paths_new:
 db_entry_dicts = []
 for data_path in file_paths_new:
     
-    # specify data file directory
-    # data_dir = r'W:\Projekte\NRW_HyperSol_61904\Bearbeitung\Massenspektroskopie\Messdaten\001-04-2022'
-    # data_file_name = 'LFD_Basic_AllBins_Recipe_HyperSol_120C_1sccmN2_0p6gph-H2O_150W-HMI_Sample-21J4.dat'
-    # data_path = os.path.join(data_dir, data_file_name)
     data_file_name = os.path.basename(data_path)
     data_name = os.path.splitext(data_file_name)[0]
+
     # read annotations from run file
     run_path = os.path.splitext(data_path)[0] + '.isi'
     # read data file as pandas dataframe
     data_df = pd.read_csv(data_path, skiprows=372, sep='\t')
     data_dict = data_df.to_dict('list')
-    
-    
+
     # In[337]:
-    
-    
     # read general information
     with open(data_path, 'r') as file:
         lines = file.readlines()
@@ -109,11 +108,8 @@ for data_path in file_paths_new:
                                     "%m/%d/%y %H:%M:%S")
     general_info_dict['DateTime'] = date_object
     general_info_dict['Run Path and Name'] = org_path
-    
-    
+
     # In[338]:
-    
-    
     # get start time in seconds
     time_string  = general_info_dict['Start Time'].split(' ')[-1]
     h, m, s = time_string.split(':')
@@ -126,8 +122,7 @@ for data_path in file_paths_new:
         
     annotations = []
     for line in annotation_lines:
-        # annotation_text = line.split('By:')[0].replace('\x03', ' ').replace('\x04', ' ').replace('\x02', ' ')
-        # annotation_date = line.split('on')[-1]
+
         annotation_list = re.split('\x03|\x04|\x02|\n', line)[:-1]
         annotation_list = [i for i in annotation_list if i != '']
         text = ' '.join(annotation_list[:annotation_list.index('By:')])
@@ -145,7 +140,8 @@ for data_path in file_paths_new:
     # In[339]:
     # filter keys for even numbers (atom masses)
     data_dict_filtered = {k: v for k, v in data_dict.items() if '.' not in k}
-    data_dict_filtered.update({k[:-3]: v for k, v in data_dict.items() if (k[-3:] == '.00')})
+    data_dict_filtered.update({k[:-3]: v for k, v
+                               in data_dict.items() if (k[-3:] == '.00')})
 
     # In[340]:
     def get_between(base_string, split_str, sep_str='_', after=False):
@@ -188,10 +184,6 @@ for data_path in file_paths_new:
                      'Lamp': lamp,
                      'Gas Molar Composition (-)': 
                          {k: v / vol_flow_total for k, v in vol_flow.items()},
-                     # 'Gas Molar Composition (-)': {'CO2': vol_flow['CO2'] / vol_flow_total , 
-                     #                               'CH4': vol_flow['CH4'] / vol_flow_total}, 
-                     # 'Liquid Molar Composition (-)': {'H2O': 1.0},
-                     # 'Liquid Molar Composition (-)': {'H2O': 1.0 - 0.019, 'C3H8O': 0.019},
                      'Liquid Flow Rate (g/h)': liquid_flow,
                      'Gas Flow Rate (sccm)': vol_flow_total}
     
@@ -202,7 +194,6 @@ for data_path in file_paths_new:
     else:
         db_entry_dict['Liquid Molar Composition (-)'] = {'H2O': 1.0}
         
-                     # 'Radiation Source': 'HMI 150W',
     db_entry_dict['Annotations'] = annotations
     print(db_entry_dict)
     db_entry_dict['Data'] = data_dict_filtered
@@ -210,9 +201,7 @@ for data_path in file_paths_new:
     db_entry_dict.update(general_info_dict)
     db_entry_dicts.append(db_entry_dict)
 
-
 # In[342]:
-
 # insert loaded entry into database collection
 current_collection.insert_many(db_entry_dicts)
 

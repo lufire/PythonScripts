@@ -11,39 +11,36 @@ import os
 import re
 import copy
 import matplotlib.pyplot as plt
-# from matplotlib.ticker import (MultipleLocator, FormatStrFormatter, AutoMinorLocator)
-# import mpl_toolkits.axisartist as axisartist
 from pymongo import MongoClient
 import json
-# from itertools import cycle
 from collections import OrderedDict
 import plotly.graph_objects as go
-import mongodb_credentials as mc
-# import plotly.io as pio
-# from fpdf import FPDF
-# from tabulate import tabulate
-
+from getpass import getpass
 
 # In[3]:
+# Database authentication
+host_name = input('Provide database host name: ')
+user_name = input('Provide database user name: ')
+password = getpass('Provide database password: ')
+
 
 # initialize mongo connector object with ip adress
-client = MongoClient(mc.HOST_NAME)
+client = MongoClient(host_name)
 # get reference to existing database testDB
 db = client.HyperSol
 # authentication within database
-db.authenticate(mc.USER_NAME, mc.PASSWORD, source='admin')
+db.authenticate(user_name, password, source='admin')
 
 
 # In[4]:
 # directories
-
 # path to mass spectrum calibration data
 ms_calibration_data_file = r'W:\Projekte\NRW_HyperSol_61904\Bearbeitung\Massenspektroskopie\Spektren\mass_spectrums.json'
 
 # path to save plots
 plot_path = r'W:\Projekte\NRW_HyperSol_61904\Bearbeitung\Ergebnisse\Averaged_Results'
-# In[ ]:
 
+# In[ ]:
 
 # # reference collection, if not existent it will be created
 # raw_collection = db['HyperSol_61904']
@@ -57,7 +54,6 @@ plot_path = r'W:\Projekte\NRW_HyperSol_61904\Bearbeitung\Ergebnisse\Averaged_Res
 
 
 # In[146]:
-
 
 # reference collection, if not existent it will be created
 db = client.HyperSol
@@ -120,10 +116,9 @@ for db_entry in raw_db_entries:
                        align=['left', 'right']), columnwidth=[0.3, 0.7])])
         fig.update_layout(width=300, height=240, 
                           margin=dict(l=20, r=20, t=20, b=20))
-        # fig.show()
+
         file_name = 'Inlet_Composition.png'
         fig.write_image(os.path.join(directory, file_name), scale=2)
-        # pio.write_image(fig, os.path.join(directory, file_name), width=400, height=240, scale=2)
 
         # In[150]:
         liquid_composition_key = 'Liquid Molar Composition (-)'
@@ -146,11 +141,8 @@ for db_entry in raw_db_entries:
                            align=['left', 'right']), columnwidth=[0.3, 0.7])])
             fig.update_layout(width=300, height=240, 
                               margin=dict(l=20, r=20, t=20, b=20))
-            # fig.show()
             file_name = 'Liquid_Composition.png'
             fig.write_image(os.path.join(directory, file_name), scale=2)
-        
-        # pio.write_image(fig, os.path.join(directory, file_name), width=400, height=240, scale=2)
 
         # In[151]:
         # manipulate db entry accordingly
@@ -185,19 +177,16 @@ for db_entry in raw_db_entries:
                           margin=dict(l=20, r=20, t=20, b=20))
         fig.for_each_trace(
             lambda t: t.update(header_fill_color='rgba(0,0,0,0)'))
-        # fig.show()
         file_name = 'General_Information.png'
         fig.write_image(os.path.join(directory, file_name), scale=2)
-        
-        
+
         # In[152]:
         # get data array from database entry
         source_data = db_entry['Data']
-        data = {}
-        data['y_keys'] = [k for k in source_data.keys() if k[0]
-                          in (str(i) for i in range(10))]
+        data = {'y_keys': [k for k in source_data.keys() if k[0]
+                           in (str(i) for i in range(10))]}
         data['y'] = np.asarray([source_data[key] for key in data['y_keys']])
-        
+
         # get x-values and make size the array equal to y-values array
         data['x_key'] = 'Time Relative (sec)'
         data['x'] = np.asarray(source_data[data['x_key']])
@@ -348,7 +337,6 @@ for db_entry in raw_db_entries:
         fig.legend(custom_data['amus'], fontsize=font_size-2, 
                    edgecolor='k', bbox_to_anchor=(1.01, 0.89))
         # plt.tight_layout()
-        # plt.show()
         # save figure
         file_name = 'Raw_Spectrum.png'
         fig.savefig(os.path.join(directory, file_name), bbox_inches='tight')
@@ -408,7 +396,6 @@ for db_entry in raw_db_entries:
         ax.set_ylabel('Signal', fontsize=18)
         ax.tick_params(axis='both', which='major', labelsize=16)
         ax.tick_params(axis='x', which='major', labelrotation=0)
-        # plt.show()
 
         # In[158]:
         # save figure
@@ -419,10 +406,8 @@ for db_entry in raw_db_entries:
         # replace data in database dict
         db_entry['Data'] = df_mean[filtered_amu_list_str].to_dict()
         db_entry['Averaging Intervals (s)'] = intervals.tolist()
-        # remove time step data        
-        
-        # In[160]:
 
+        # In[160]:
         # insert into database collection
         averaged_collection.insert_one(db_entry)
 

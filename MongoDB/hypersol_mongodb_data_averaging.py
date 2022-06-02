@@ -5,22 +5,24 @@
 # import relevant libraries
 import numpy as np
 import pandas as pd
-import os
 import re
-import matplotlib.pyplot as plt
 from pymongo import MongoClient
 import json
 from collections import OrderedDict
-from datetime import datetime, timedelta
-import mongodb_credentials as mc
+from getpass import getpass
 
 
-# initialize mongo connector object with ip adress
-client = MongoClient(mc.HOST_NAME)
+# Database authentication
+host_name = input('Provide database host name: ')
+user_name = input('Provide database user name: ')
+password = getpass('Provide database password: ')
+
+# initialize mongo connector object with ip address
+client = MongoClient(host_name)
 # get reference to existing database testDB
 db = client.HyperSol
 # authentication within database
-db.authenticate(mc.USER_NAME, mc.PASSWORD, source='admin')
+db.authenticate(user_name, password, source='admin')
 
 # path to mass spectrum calibration data
 ms_calibration_data_file = r'W:\Projekte\NRW_HyperSol_61904\Bearbeitung'\
