@@ -1,5 +1,5 @@
 import cantera as ct
-import CoolProp.CoolProp as CP
+# import CoolProp.CoolProp as CP
 import time
 import numpy as np
 
@@ -21,7 +21,7 @@ solution_array = ct.SolutionArray(solution, nx)
 temperature = np.linspace(temperature_init, temperature_init + 10.0, nx)
 
 # Loop
-n_iter = 10
+n_iter = 100
 
 start_time_ct = time.time()
 for i in range(n_iter):
@@ -50,23 +50,23 @@ for i in range(n_iter):
 end_time_ct = time.time()
 print('Solution class timing: ', end_time_ct - start_time_ct)
 
-start_time_ct = time.time()
-gas_mixture = 'Oxygen&Nitrogen'
-HEOS = CP.AbstractState("HEOS", gas_mixture)
-HEOS.set_mole_fractions([0.21, 0.79])
-for i in range(n_iter):
-    temperature += 1.0
-    density = np.zeros(nx)
-    viscosity = np.zeros(nx)
-    thermal_conductivity = np.zeros(nx)
-    specific_heat = np.zeros(nx)
-    for j in range(nx):
-        HEOS.update(CP.PT_INPUTS, pressure, temperature[j])
-        density = HEOS.rhomass()
-    # viscosity = CP.PropsSI('V', 'T', temperature, 'P', pressure, gas_mixture)
-    # thermal_conductivity = \
-    #     CP.PropsSI('L', 'T', temperature, 'P', pressure, gas_mixture)
-    # specific_heat = CP.PropsSI('C', 'T', temperature, 'P', pressure, gas_mixture)
-
-end_time_ct = time.time()
-print('CoolProp timing: ', end_time_ct - start_time_ct)
+# start_time_ct = time.time()
+# gas_mixture = 'Oxygen&Nitrogen'
+# HEOS = CP.AbstractState("HEOS", gas_mixture)
+# HEOS.set_mole_fractions([0.21, 0.79])
+# for i in range(n_iter):
+#     temperature += 1.0
+#     density = np.zeros(nx)
+#     viscosity = np.zeros(nx)
+#     thermal_conductivity = np.zeros(nx)
+#     specific_heat = np.zeros(nx)
+#     for j in range(nx):
+#         HEOS.update(CP.PT_INPUTS, pressure, temperature[j])
+#         density = HEOS.rhomass()
+#     # viscosity = CP.PropsSI('V', 'T', temperature, 'P', pressure, gas_mixture)
+#     # thermal_conductivity = \
+#     #     CP.PropsSI('L', 'T', temperature, 'P', pressure, gas_mixture)
+#     # specific_heat = CP.PropsSI('C', 'T', temperature, 'P', pressure, gas_mixture)
+#
+# end_time_ct = time.time()
+# print('CoolProp timing: ', end_time_ct - start_time_ct)
